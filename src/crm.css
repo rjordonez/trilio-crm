@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 10% 98%;
+    --foreground: 210 20% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 20% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 20% 14%;
+
+    --primary: 228 89% 63%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 20% 95%;
+    --secondary-foreground: 210 20% 14%;
+
+    --muted: 225 12% 94%;
+    --muted-foreground: 210 10% 46%;
+
+    --accent: 205 65% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 12% 90%;
+    --input: 225 12% 90%;
+    --ring: 228 89% 63%;
+
+    --radius: 0.625rem;
+
+    /* CRM-specific tokens */
+    --success: 152 55% 46%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 30 40% 14%;
+    --info: 205 65% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Kanban status colors */
+    --status-new: 205 65% 48%;
+    --status-contacted: 38 92% 55%;
+    --status-tour: 270 50% 55%;
+    --status-applied: 228 89% 63%;
+    --status-closed: 210 10% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 225 15% 96%;
+    --sidebar-foreground: 210 15% 30%;
+    --sidebar-primary: 228 89% 63%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 20% 92%;
+    --sidebar-accent-foreground: 210 20% 14%;
+    --sidebar-border: 225 12% 90%;
+    --sidebar-ring: 228 89% 63%;
+
+    /* Surface layers */
+    --surface: 0 0% 100%;
+    --surface-hover: 225 15% 97%;
+    --surface-active: 225 20% 94%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(210 20% 14% / 0.04);
+    --shadow-md: 0 4px 12px -2px hsl(210 20% 14% / 0.06), 0 2px 4px -2px hsl(210 20% 14% / 0.04);
+    --shadow-lg: 0 12px 32px -4px hsl(210 20% 14% / 0.08), 0 4px 8px -2px hsl(210 20% 14% / 0.04);
+
+    --font-display: 'DM Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  .dark {
+    --background: 210 20% 7%;
+    --foreground: 225 10% 95%;
+    --card: 210 18% 10%;
+    --card-foreground: 225 10% 95%;
+    --popover: 210 18% 10%;
+    --popover-foreground: 225 10% 95%;
+    --primary: 228 85% 68%;
+    --primary-foreground: 210 20% 7%;
+    --secondary: 210 15% 15%;
+    --secondary-foreground: 225 10% 95%;
+    --muted: 210 15% 15%;
+    --muted-foreground: 210 10% 55%;
+    --accent: 205 60% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 15% 18%;
+    --input: 210 15% 18%;
+    --ring: 228 85% 68%;
+    --sidebar-background: 210 18% 8%;
+    --sidebar-foreground: 225 10% 80%;
+    --sidebar-primary: 228 85% 68%;
+    --sidebar-primary-foreground: 210 20% 7%;
+    --sidebar-accent: 210 15% 13%;
+    --sidebar-accent-foreground: 225 10% 95%;
+    --sidebar-border: 210 15% 18%;
+    --sidebar-ring: 228 85% 68%;
+    --surface: 210 18% 10%;
+    --surface-hover: 210 15% 13%;
+    --surface-active: 210 15% 16%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .shadow-crm-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  .shadow-crm-md {
+    box-shadow: var(--shadow-md);
+  }
+  .shadow-crm-lg {
+    box-shadow: var(--shadow-lg);
+  }
+}

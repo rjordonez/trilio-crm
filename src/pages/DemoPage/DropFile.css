@@ -1,0 +1,219 @@
+.drop-file-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-file-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 600px;
+  width: 100%;
+  position: relative;
+}
+
+.back-button {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  background: none;
+  border: none;
+  color: #6B7280;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.back-button:hover {
+  color: #374151;
+}
+
+.drop-file-container h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.drop-file-subtitle {
+  text-align: center;
+  color: #6B7280;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+.drop-zone {
+  border: 3px dashed #D1D5DB;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #F9FAFB;
+}
+
+.drop-zone:hover {
+  border-color: #4B6EF5;
+  background: #F0F4FF;
+}
+
+.drop-zone.dragging {
+  border-color: #4B6EF5;
+  background: #EEF2FF;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  color: #9CA3AF;
+  margin-bottom: 1rem;
+}
+
+.drop-zone.dragging .upload-icon,
+.drop-zone:hover .upload-icon {
+  color: #4B6EF5;
+}
+
+.drop-zone-text {
+  color: #374151;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.drop-zone-text strong {
+  color: #1f2937;
+}
+
+.drop-zone-hint {
+  color: #9CA3AF;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.file-selected {
+  padding: 1rem 0;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #F3F4F6;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.file-icon {
+  color: #4B6EF5;
+  flex-shrink: 0;
+}
+
+.file-details {
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+  word-break: break-word;
+}
+
+.file-size {
+  color: #6B7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.remove-file-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #EF4444;
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.remove-file-btn:hover:not(:disabled) {
+  background: #DC2626;
+  transform: scale(1.1);
+}
+
+.remove-file-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-message-box {
+  background: #FEE2E2;
+  color: #991B1B;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  border: 1px solid #FCA5A5;
+}
+
+.transcribe-btn {
+  width: 100%;
+  background: #4B6EF5;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.transcribe-btn:hover:not(:disabled) {
+  background: #3b5fd9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(75, 110, 245, 0.3);
+}
+
+.transcribe-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .drop-file-page {
+    padding: 1rem;
+  }
+
+  .drop-file-container {
+    padding: 2rem 1.5rem;
+  }
+
+  .drop-file-container h1 {
+    font-size: 1.75rem;
+  }
+
+  .drop-zone {
+    padding: 2rem 1rem;
+  }
+
+  .file-info {
+    padding: 1rem;
+  }
+}

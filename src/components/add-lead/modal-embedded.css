@@ -1,0 +1,27 @@
+/* Overrides for full-page demo components rendered inside the AddLead modal */
+
+.modal-embedded .tour-summary,
+.modal-embedded .listen-mode-form,
+.modal-embedded .recording-page,
+.modal-embedded .drop-file-page,
+.modal-embedded .section-detail {
+  min-height: auto;
+  padding: 0;
+  background: none;
+}
+
+.modal-embedded .summary-container,
+.modal-embedded .form-container,
+.modal-embedded .recording-container,
+.modal-embedded .drop-file-container,
+.modal-embedded .detail-container {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+  background: none;
+}
+
+.modal-embedded .back-button {
+  display: none;
+}

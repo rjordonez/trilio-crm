@@ -1,0 +1,279 @@
+.section-detail {
+  min-height: 100vh;
+  background: #F3F4F6;
+  padding: 1rem;
+}
+
+.detail-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #6B7280;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.75rem 0;
+  margin-bottom: 1rem;
+  transition: color 0.2s;
+}
+
+.back-button:hover {
+  color: #374151;
+}
+
+.detail-container h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.detail-subtitle {
+  color: #6B7280;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-item {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  transition: all 0.2s;
+}
+
+.detail-item.highlighted {
+  background: #FEF3C7;
+  border: 2px solid #F59E0B;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.item-text {
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  cursor: pointer;
+  padding-right: 120px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.item-text:hover {
+  color: #1f2937;
+}
+
+.item-actions {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.highlight-btn,
+.edit-btn,
+.delete-btn {
+  background: #F3F4F6;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6B7280;
+}
+
+.highlight-btn:hover {
+  background: #FEF3C7;
+  color: #F59E0B;
+}
+
+.highlight-btn.active {
+  background: #F59E0B;
+  color: white;
+}
+
+.edit-btn:hover {
+  background: #DBEAFE;
+  color: #3B82F6;
+}
+
+.delete-btn:hover {
+  background: #FEE2E2;
+  color: #EF4444;
+}
+
+.edit-mode {
+  width: 100%;
+}
+
+.edit-textarea,
+.add-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #4B6EF5;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.edit-textarea:focus,
+.add-textarea:focus {
+  outline: none;
+  border-color: #3b5fd9;
+}
+
+.edit-actions,
+.add-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.save-edit-btn,
+.cancel-edit-btn,
+.save-add-btn,
+.cancel-add-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-edit-btn,
+.save-add-btn {
+  background: #4B6EF5;
+  color: white;
+  flex: 1;
+}
+
+.save-edit-btn:hover,
+.save-add-btn:hover {
+  background: #3b5fd9;
+}
+
+.cancel-edit-btn,
+.cancel-add-btn {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.cancel-edit-btn:hover,
+.cancel-add-btn:hover {
+  background: #E5E7EB;
+  color: #374151;
+}
+
+.add-item-form {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.add-item-btn {
+  width: 100%;
+  background: white;
+  border: 2px dashed #D1D5DB;
+  color: #6B7280;
+  padding: 1rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-item-btn:hover {
+  border-color: #4B6EF5;
+  color: #4B6EF5;
+  background: #F0F4FF;
+}
+
+.detail-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 1rem 0;
+  background: #F3F4F6;
+}
+
+.done-btn {
+  width: 100%;
+  background: #4B6EF5;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(75, 110, 245, 0.2);
+}
+
+.done-btn:hover {
+  background: #3b5fd9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(75, 110, 245, 0.3);
+}
+
+@media (max-width: 768px) {
+  .section-detail {
+    padding: 0;
+  }
+
+  .detail-container {
+    padding: 1rem;
+  }
+
+  .detail-container h1 {
+    font-size: 1.5rem;
+  }
+
+  .detail-item {
+    padding: 1rem;
+  }
+
+  .item-text {
+    padding-right: 0;
+    padding-bottom: 3rem;
+  }
+
+  .item-actions {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    top: auto;
+    transform: none;
+  }
+
+  .highlight-btn,
+  .edit-btn,
+  .delete-btn {
+    width: 32px;
+    height: 32px;
+  }
+}

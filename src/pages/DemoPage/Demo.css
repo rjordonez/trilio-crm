@@ -1,0 +1,66 @@
+.demo {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.demo-container {
+  background: white;
+  border-radius: 12px;
+  padding: 4rem 3rem;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.demo-container h1 {
+  font-size: 3rem;
+  font-weight: 300;
+  color: #1f2937;
+  margin-bottom: 3rem;
+  font-family: 'Playfair Display', serif;
+}
+
+.demo-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.demo-btn {
+  background: #4B6EF5;
+  color: white;
+  border: none;
+  padding: 1.25rem 2rem;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: capitalize;
+}
+
+.demo-btn:hover {
+  background: #3b5fd9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(75, 110, 245, 0.3);
+}
+
+@media (max-width: 768px) {
+  .demo-container {
+    padding: 3rem 2rem;
+  }
+
+  .demo-container h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .demo-btn {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+}
