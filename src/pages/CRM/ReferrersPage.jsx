@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TopBar from "@/components/TopBar";
-import { mockReferrers, mockPipelineLeads } from "@/data/mockData";
+import { fetchReferrers, createReferrer } from "@/services/supabaseReferrers";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,7 +19,7 @@ const stageLabels = {
   post_tour: "Post-Tour", deposit: "Deposit", move_in: "Move-in",
 };
 
-export default function ReferrersPage() {
+export default function ReferrersPage({ leads = [] }) {
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [sortKey, setSortKey] = useState("name");
@@ -31,13 +31,17 @@ export default function ReferrersPage() {
   const [filterRep, setFilterRep] = useState("all");
   const [filterCare, setFilterCare] = useState("all");
   const [addPartnerOpen, setAddPartnerOpen] = useState(false);
-  const [localReferrers, setLocalReferrers] = useState(mockReferrers);
+  const [localReferrers, setLocalReferrers] = useState([]);
+
+  useEffect(() => {
+    fetchReferrers().then(setLocalReferrers).catch(console.error);
+  }, []);
 
   const totalReferrals = localReferrers.reduce((s, r) => s + r.referredLeadIds.length, 0);
   const activePartners = localReferrers.filter((r) => r.status === "active").length;
 
   // Referrer snapshot KPIs
-  const referralLeads = mockPipelineLeads.filter(l => l.source === "Referral");
+  const referralLeads = leads.filter(l => l.source === "Referral");
   const referralCalled = referralLeads.filter(l => ["connection", "pre_tour", "post_tour", "deposit", "move_in"].includes(l.stage));
   const referralClosed = referralLeads.filter(l => ["deposit", "move_in"].includes(l.stage));
   const convRefToCall = referralLeads.length > 0 ? Math.round((referralCalled.length / referralLeads.length) * 100) : 0;
@@ -66,18 +70,18 @@ export default function ReferrersPage() {
 
   // All referred leads across all partners with hours
   const allReferredLeads = useMemo(() => {
-    const leads = [];
+    const result = [];
     localReferrers.forEach(r => {
       const perLead = Math.round(r.serviceHoursRequested / Math.max(r.referredLeadIds.length, 1));
       r.referredLeadIds.forEach(id => {
-        const lead = mockPipelineLeads.find(l => l.id === id);
+        const lead = leads.find(l => l.id === id);
         if (lead) {
-          leads.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: editingHours[`${r.id}-${lead.id}`] ?? perLead, partnerName: r.name, partnerId: r.id });
+          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: editingHours[`${r.id}-${lead.id}`] ?? perLead, partnerName: r.name, partnerId: r.id });
         }
       });
     });
-    return leads;
-  }, [editingHours, localReferrers]);
+    return result;
+  }, [editingHours, localReferrers, leads]);
 
   // Filter options
   const uniquePartners = [...new Set(allReferredLeads.map(l => l.partnerName))];
@@ -293,6 +297,7 @@ export default function ReferrersPage() {
           open={!!selectedReferrer}
           onClose={() => setSelectedReferrer(null)}
           onLeadClick={(lead) => { setSelectedReferrer(null); setSelectedLead(lead); }}
+          allLeads={leads}
         />
       )}
 
@@ -303,7 +308,14 @@ export default function ReferrersPage() {
       <AddPartnerSheet
         open={addPartnerOpen}
         onOpenChange={setAddPartnerOpen}
-        onAdd={(partner) => setLocalReferrers(prev => [...prev, partner])}
+        onAdd={async (partner) => {
+          try {
+            const saved = await createReferrer(partner);
+            setLocalReferrers(prev => [...prev, saved]);
+          } catch (err) {
+            console.error('Failed to create referrer:', err);
+          }
+        }}
       />
     </div>
   );
@@ -330,8 +342,8 @@ function SnapshotKPI({ icon: Icon, label, value, prev, current }) {
   );
 }
 
-function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick }) {
-  const referredLeads = mockPipelineLeads.filter((l) => referrer.referredLeadIds.includes(l.id));
+function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [] }) {
+  const referredLeads = allLeads.filter((l) => referrer.referredLeadIds.includes(l.id));
   const leadsWithHours = referredLeads.map((lead) => {
     const hours = Math.round(referrer.serviceHoursRequested / Math.max(referrer.referredLeadIds.length, 1));
     return { ...lead, hours };

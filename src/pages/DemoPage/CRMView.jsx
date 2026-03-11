@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,8 +12,8 @@ import FollowUpPage from "@/pages/CRM/FollowUpPage";
 import ChatbotPage from "@/pages/CRM/ChatbotPage";
 import ReferrersPage from "@/pages/CRM/ReferrersPage";
 import { ChatProvider } from "@/contexts/ChatContext";
-import { mockPipelineLeads } from "@/data/mockData";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import '../../crm.css';
 
 const queryClient = new QueryClient();
@@ -21,14 +21,23 @@ const queryClient = new QueryClient();
 function CRMView() {
   const [currentPage, setCurrentPage] = useState('leads');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [leads, setLeads] = useState(mockPipelineLeads);
+  const [leads, setLeads] = useState([]);
   const [autoOpenLeadId, setAutoOpenLeadId] = useState(null);
   const isMobile = useIsMobile();
 
-  const handleAddLead = useCallback((lead, { autoOpen } = {}) => {
-    setLeads((prev) => [...prev, lead]);
-    if (autoOpen) {
-      setAutoOpenLeadId(lead.id);
+  useEffect(() => {
+    fetchLeads().then(setLeads).catch(console.error);
+  }, []);
+
+  const handleAddLead = useCallback(async (lead, { autoOpen } = {}) => {
+    try {
+      const saved = await createLead(lead);
+      setLeads((prev) => [...prev, saved]);
+      if (autoOpen) {
+        setAutoOpenLeadId(saved.id);
+      }
+    } catch (err) {
+      console.error('Failed to create lead:', err);
     }
   }, []);
 
@@ -62,7 +71,7 @@ function CRMView() {
           />
         );
       case 'referrers':
-        return <ReferrersPage />;
+        return <ReferrersPage leads={leads} />;
       case 'tours':
         return <ToursPage />;
       case 'follow-up':

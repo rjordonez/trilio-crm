@@ -30,3 +30,4 @@ dist-ssr
 
 # Reference repo
 silver-stream-organizer/
+.vercel

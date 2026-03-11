@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { updateLead } from "@/services/supabaseLeads";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -216,7 +217,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
     });
   }, [leads, filters]);
 
-  const onDragEnd = (result) => {
+  const onDragEnd = useCallback((result) => {
     if (!result.destination) return;
     const { source, destination } = result;
     const sourceStage = source.droppableId;
@@ -229,13 +230,21 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
     destItems.splice(destination.index, 0, moved);
     const otherLeads = withoutMoved.filter((l) => l.stage !== destStage);
     setLeads([...otherLeads, ...destItems]);
-  };
+    updateLead(moved.id, moved).catch(console.error);
+  }, [leads, setLeads]);
 
-  const handleStageChange = (leadId, newStage) => {
+  const handleStageChange = useCallback((leadId, newStage) => {
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l))
+      prev.map((l) => {
+        if (l.id === leadId) {
+          const updated = { ...l, stage: newStage };
+          updateLead(leadId, updated).catch(console.error);
+          return updated;
+        }
+        return l;
+      })
     );
-  };
+  }, [setLeads]);
 
   const handleCall = (lead) => {
     setCallTarget({ name: lead.name, phone: lead.contactPhone });
