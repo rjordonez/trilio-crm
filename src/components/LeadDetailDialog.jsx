@@ -176,12 +176,99 @@ function TimelineContent({ interactions, onAddNote }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile }) {
+const allStages = [
+  { key: "inquiry", label: "Inquiry" },
+  { key: "assessment_scheduled", label: "Assessment Scheduled" },
+  { key: "assessment_completed", label: "Assessment Completed" },
+  { key: "proposal_sent", label: "Proposal Sent" },
+  { key: "pending_decision", label: "Pending Decision" },
+  { key: "closed", label: "Closed" },
+  { key: "rejected", label: "Rejected" },
+];
+
+function EditableStageBadge({ stage, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [showRejectReason, setShowRejectReason] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setShowRejectReason(false);
+        setRejectReason("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const currentLabel = allStages.find((s) => s.key === stage)?.label || stage;
+  const isRejected = stage === "rejected";
+
+  return (
+    <div ref={ref} className="relative">
+      <Badge
+        variant="secondary"
+        className={`cursor-pointer ${isRejected ? "bg-destructive/10 text-destructive border-destructive/20" : ""}`}
+        onClick={() => setOpen(!open)}
+      >
+        {currentLabel}
+        <ChevronDown className="h-2.5 w-2.5 ml-1" />
+      </Badge>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 rounded-md border border-border bg-popover shadow-lg py-1 min-w-[180px]">
+          {allStages.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => {
+                if (s.key === "rejected") {
+                  setShowRejectReason(true);
+                } else {
+                  onChange(s.key);
+                  setOpen(false);
+                  setShowRejectReason(false);
+                }
+              }}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors ${
+                stage === s.key ? "font-semibold text-primary" : s.key === "rejected" ? "text-destructive" : "text-foreground"
+              }`}
+            >{s.label}</button>
+          ))}
+          {showRejectReason && (
+            <div className="px-3 py-2 border-t border-border space-y-2">
+              <textarea
+                placeholder="Reason (optional)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs min-h-[50px] resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+              />
+              <button
+                onClick={() => {
+                  onChange("rejected", rejectReason || undefined);
+                  setOpen(false);
+                  setShowRejectReason(false);
+                  setRejectReason("");
+                }}
+                className="w-full rounded-md bg-destructive text-destructive-foreground px-3 py-1.5 text-xs font-medium hover:bg-destructive/90 transition-colors"
+              >Reject</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange }) {
   const [aiSummary, setAiSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [localInteractions, setLocalInteractions] = useState([]);
   const [dbInteractions, setDbInteractions] = useState([]);
   const [localScore, setLocalScore] = useState(null);
+  const [localStage, setLocalStage] = useState(null);
 
   // Fetch saved activity logs from DB when lead changes
   useEffect(() => {
@@ -223,6 +310,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
       setAiSummary(null);
       setAiLoading(false);
       setLocalScore(null);
+      setLocalStage(null);
     }
     onOpenChange(openState);
   };
@@ -284,7 +372,15 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
             <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
-            <Badge variant="secondary">{stageLabel[lead.stage]}</Badge>
+            <EditableStageBadge
+              stage={localStage || lead.stage}
+              onChange={(newStage, rejectReason) => {
+                setLocalStage(newStage);
+                if (lead) lead.stage = newStage;
+                if (newStage === "rejected" && rejectReason) lead.rejectedReason = rejectReason;
+                onStageChange?.(lead.id, newStage, rejectReason);
+              }}
+            />
           </div>
         </DialogHeader>
 

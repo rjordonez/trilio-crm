@@ -3,7 +3,7 @@ import { updateLead } from "@/services/supabaseLeads";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2 } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, Eye, EyeOff } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
@@ -242,6 +242,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const [filters, setFilters] = useState({ stage: "all", source: "all", careLevel: "all", salesRep: "all", score: "all" });
   const [stageChangeLead, setStageChangeLead] = useState(null);
   const [kanbanCareFilter, setKanbanCareFilter] = useState("all");
+  const [showRejected, setShowRejected] = useState(false);
 
   // Call & Email dialog state
   const [callTarget, setCallTarget] = useState(null);
@@ -272,6 +273,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   }, [leads, filters]);
 
   const kanbanLeads = useMemo(() => filteredLeads.filter((l) => l.stage !== "rejected"), [filteredLeads]);
+  const rejectedLeads = useMemo(() => filteredLeads.filter((l) => l.stage === "rejected"), [filteredLeads]);
 
   const onDragEnd = useCallback((result) => {
     if (!result.destination) return;
@@ -379,6 +381,40 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           </div>
         );
       })}
+      {rejectedLeads.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowRejected(!showRejected)}
+            className="flex items-center gap-2 mb-2 px-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showRejected ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            <span className="uppercase tracking-wide">Rejections</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/10 text-[10px] font-medium text-destructive">{rejectedLeads.length}</span>
+          </button>
+          {showRejected && (
+            <div className="space-y-2">
+              {rejectedLeads.map((lead) => (
+                <div
+                  key={lead.id}
+                  onClick={() => setSelectedLead(lead)}
+                  className="rounded-lg border border-destructive/20 bg-card p-3 shadow-crm-sm cursor-pointer opacity-70 active:opacity-100 transition-all"
+                >
+                  <p className="text-sm font-semibold text-foreground">{lead.name}</p>
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Heart className="h-3 w-3 text-muted-foreground" />
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${careLevelColors[lead.careLevel]}`}>{lead.careLevel}</span>
+                    </div>
+                    {lead.rejectedReason && (
+                      <p className="text-[10px] text-muted-foreground truncate">Reason: {lead.rejectedReason}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -465,6 +501,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           isMobile ? (
             renderMobileKanban()
           ) : (
+            <>
             <DragDropContext onDragEnd={onDragEnd}>
               <div className="flex gap-3 min-w-max">
                 {stages.map((stage) => {
@@ -535,6 +572,44 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                 })}
               </div>
             </DragDropContext>
+            {rejectedLeads.length > 0 && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowRejected(!showRejected)}
+                  className="flex items-center gap-2 mb-3 px-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showRejected ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  <span className="uppercase tracking-wide">Rejections</span>
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/10 text-[10px] font-medium text-destructive">{rejectedLeads.length}</span>
+                </button>
+                {showRejected && (
+                  <div className="flex gap-2 flex-wrap">
+                    {rejectedLeads.map((lead) => (
+                      <div
+                        key={lead.id}
+                        onClick={() => setSelectedLead(lead)}
+                        className="w-64 rounded-lg border border-destructive/20 bg-card p-3 shadow-crm-sm cursor-pointer hover:shadow-crm-md transition-shadow opacity-70 hover:opacity-100"
+                      >
+                        <p className="text-sm font-semibold text-foreground">{lead.name}</p>
+                        <div className="mt-2 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <Heart className="h-3 w-3 text-muted-foreground" />
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${careLevelColors[lead.careLevel]}`}>{lead.careLevel}</span>
+                          </div>
+                          {lead.rejectedReason && (
+                            <p className="text-[10px] text-muted-foreground truncate">Reason: {lead.rejectedReason}</p>
+                          )}
+                          {lead.rejectedDate && (
+                            <p className="text-[10px] text-muted-foreground">{formatDate(lead.rejectedDate)}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            </>
           )
         ) : (
           isMobile ? (
@@ -611,6 +686,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onOpenChange={(open) => !open && setSelectedLead(null)}
         onCall={(lead) => handleCall(lead)}
         onEmail={(lead) => handleEmail(lead)}
+        onStageChange={handleStageChange}
         isMobile={isMobile}
       />
 
