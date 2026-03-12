@@ -326,6 +326,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
       <AddPartnerSheet
         open={addPartnerOpen}
         onOpenChange={setAddPartnerOpen}
+        referrers={localReferrers}
         onAdd={async (partner) => {
           try {
             const saved = await createReferrer(partner);
@@ -448,19 +449,31 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
               <p className="text-sm text-muted-foreground text-center py-4">No referrals yet</p>
             ) : (
               <div className="flex flex-col items-center">
-                {/* Root node - Org card */}
+                {/* Root node - Organization */}
                 <div className="rounded-lg border-2 border-primary bg-primary/5 px-5 py-3 text-center shadow-sm">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <Building2 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold text-foreground">{referrer.name}</p>
+                    <p className="text-sm font-semibold text-foreground">{referrer.organization || referrer.name}</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {referrer.type} &middot; {referredLeads.length} referral{referredLeads.length !== 1 ? "s" : ""}
+                  <p className="text-[11px] text-muted-foreground">{referrer.type}</p>
+                </div>
+
+                {/* Connector: Org → Referrer Person */}
+                <div className="w-px h-5 bg-border" />
+
+                {/* Middle node - Referrer Person */}
+                <div className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-2.5 text-center shadow-sm">
+                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                    <User className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-xs font-semibold text-foreground">{referrer.contactPerson}</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {referrer.name} &middot; {referredLeads.length} referral{referredLeads.length !== 1 ? "s" : ""}
                   </p>
                 </div>
 
-                {/* Vertical connector from root */}
-                <div className="w-px h-6 bg-border" />
+                {/* Connector: Referrer → Leads */}
+                <div className="w-px h-5 bg-border" />
 
                 {/* Horizontal bar */}
                 {sortedTreeLeads.length > 1 && (
