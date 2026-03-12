@@ -380,14 +380,14 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
               onChange={(newStage, rejectReason) => {
                 setLocalStage(newStage);
                 if (lead) lead.stage = newStage;
-                if (newStage === "rejected" && rejectReason) {
-                  lead.rejectedReason = rejectReason;
+                if (newStage === "rejected") {
+                  lead.rejectedReason = rejectReason || "";
                   const rejectionNote = {
                     id: `note-${Date.now()}`,
                     date: new Date().toISOString().split("T")[0],
                     type: "note",
                     title: "Lead Rejected",
-                    description: rejectReason,
+                    description: rejectReason || "No reason provided",
                     by: userName,
                   };
                   setLocalInteractions((prev) => [rejectionNote, ...prev]);
@@ -395,7 +395,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
                     leadId: lead.id,
                     type: "note",
                     title: "Lead Rejected",
-                    description: rejectReason,
+                    description: rejectReason || "No reason provided",
                     by: userName,
                     date: rejectionNote.date,
                   }).catch((err) => console.error("Failed to save rejection log:", err));
