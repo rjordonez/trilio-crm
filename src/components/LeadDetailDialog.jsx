@@ -8,6 +8,7 @@ import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLef
 import { toast } from "@/hooks/use-toast";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
+import { createActivityLog } from "@/services/supabaseActivityLogs";
 
 const careLevelColors = {
   "Assisted Living": "bg-info/10 text-info border-info/20",
@@ -259,6 +260,14 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
   const handleAddNote = (note) => {
     setLocalInteractions((prev) => [note, ...prev]);
+    createActivityLog({
+      leadId: lead.id,
+      type: note.type,
+      title: note.title,
+      description: note.description,
+      by: note.by,
+      date: note.date,
+    }).catch((err) => console.error('Failed to save activity log:', err));
   };
 
   const handleAddTour = (tour) => {
@@ -269,6 +278,15 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
     } else {
       lead.tourNotes = [tour.tourNote];
     }
+    createActivityLog({
+      leadId: lead.id,
+      type: tour.type,
+      title: tour.title,
+      description: tour.description,
+      by: tour.by,
+      tourNote: tour.tourNote,
+      date: tour.date,
+    }).catch((err) => console.error('Failed to save tour log:', err));
     toast({ title: "Tour logged" });
   };
 
