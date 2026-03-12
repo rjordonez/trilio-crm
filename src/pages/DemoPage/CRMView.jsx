@@ -81,6 +81,7 @@ function CRMView() {
             onAddLead={handleAddLead}
             autoOpenLeadId={autoOpenLeadId}
             onAutoOpenHandled={handleAutoOpenHandled}
+            referrers={referrers}
           />
         );
       case 'referrers':
