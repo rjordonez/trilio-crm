@@ -13,6 +13,7 @@ import ChatbotPage from "@/pages/CRM/ChatbotPage";
 import ReferrersPage from "@/pages/CRM/ReferrersPage";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Users, Handshake, LayoutGrid } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
 import '../../crm.css';
@@ -58,18 +59,6 @@ function CRMView() {
   }, []);
 
   const renderPage = () => {
-    if (isMobile) {
-      return (
-        <LeadsPage
-          leads={leads}
-          setLeads={setLeads}
-          onAddLead={handleAddLead}
-          autoOpenLeadId={autoOpenLeadId}
-          onAutoOpenHandled={handleAutoOpenHandled}
-          referrers={referrers}
-        />
-      );
-    }
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard />;
@@ -112,9 +101,29 @@ function CRMView() {
                 onNavigate={setCurrentPage}
               />
             )}
-            <main className="flex-1 overflow-auto">
+            <main className={`flex-1 overflow-auto ${isMobile ? "pb-16" : ""}`}>
               {renderPage()}
             </main>
+            {isMobile && (
+              <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border bg-card py-2">
+                {[
+                  { key: "leads", label: "Leads", icon: Users },
+                  { key: "referrers", label: "Referrers", icon: Handshake },
+                  { key: "dashboard", label: "Dashboard", icon: LayoutGrid },
+                ].map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setCurrentPage(key)}
+                    className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-md transition-colors ${
+                      currentPage === key ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-[10px] font-medium">{label}</span>
+                  </button>
+                ))}
+              </nav>
+            )}
           </div>
           {!isMobile && (
             <ChatBubble currentPage={currentPage} onNavigate={setCurrentPage} />

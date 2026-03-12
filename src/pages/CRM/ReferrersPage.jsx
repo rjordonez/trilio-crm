@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import TopBar from "@/components/TopBar";
 import { createReferrer } from "@/services/supabaseReferrers";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,6 +21,7 @@ const stageLabels = {
 };
 
 export default function ReferrersPage({ leads = [], referrers = [], setReferrers }) {
+  const isMobile = useIsMobile();
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [sortKey, setSortKey] = useState("name");
@@ -111,7 +113,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   return (
     <div className="flex flex-col h-full">
       <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className={`flex-1 overflow-auto ${isMobile ? "p-4" : "p-6"} space-y-6`}>
 
         {/* Referrer Snapshot */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -122,52 +124,73 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
           <SnapshotKPI label="Call → Close" value={`${convCallToClose}%`} prev={30} current={convCallToClose} />
         </div>
 
-        {/* Partners table */}
+        {/* Partners */}
         <div>
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <Handshake className="h-4 w-4 text-primary" />
             Partners ({localReferrers.length})
           </h3>
-          <div className="rounded-lg border border-border bg-card shadow-crm-sm">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableHead label="Partner" sortKeyVal="name" />
-                  <SortableHead label="Type" sortKeyVal="type" />
-                  <SortableHead label="Contact" sortKeyVal="contact" />
-                  <TableHead className="text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("referrals")}>
-                    <span className="inline-flex items-center gap-1 justify-center">
-                      Referrals
-                      <ArrowUpDown className={`h-3 w-3 ${sortKey === "referrals" ? "text-foreground" : "text-muted-foreground/40"}`} />
-                    </span>
-                  </TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((r) => (
-                  <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReferrer(r)}>
-                    <TableCell>
-                      <p className="font-medium text-foreground text-sm">{r.name}</p>
-                    </TableCell>
-                    <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
-                    <TableCell>
-                      <p className="text-sm text-foreground">{r.contactPerson}</p>
-                      <p className="text-xs text-muted-foreground">{r.phone}</p>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-display font-semibold text-foreground">{r.referredLeadIds.length}</span>
-                    </TableCell>
-                    <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+          {isMobile ? (
+            <div className="space-y-2">
+              {sorted.map((r) => (
+                <div
+                  key={r.id}
+                  className="rounded-lg border border-border bg-card p-3 shadow-crm-sm cursor-pointer active:bg-muted/50 transition-colors"
+                  onClick={() => setSelectedReferrer(r)}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                    <span className="font-display font-semibold text-foreground text-sm">{r.referredLeadIds.length} <span className="text-[10px] text-muted-foreground font-normal">refs</span></span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{r.type}</span>
+                    <span>{r.contactPerson}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border bg-card shadow-crm-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead label="Partner" sortKeyVal="name" />
+                    <SortableHead label="Type" sortKeyVal="type" />
+                    <SortableHead label="Contact" sortKeyVal="contact" />
+                    <TableHead className="text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("referrals")}>
+                      <span className="inline-flex items-center gap-1 justify-center">
+                        Referrals
+                        <ArrowUpDown className={`h-3 w-3 ${sortKey === "referrals" ? "text-foreground" : "text-muted-foreground/40"}`} />
+                      </span>
+                    </TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sorted.map((r) => (
+                    <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReferrer(r)}>
+                      <TableCell>
+                        <p className="font-medium text-foreground text-sm">{r.name}</p>
+                      </TableCell>
+                      <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
+                      <TableCell>
+                        <p className="text-sm text-foreground">{r.contactPerson}</p>
+                        <p className="text-xs text-muted-foreground">{r.phone}</p>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-display font-semibold text-foreground">{r.referredLeadIds.length}</span>
+                      </TableCell>
+                      <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
 
-        {/* Referred Leads Table */}
-        <div>
+        {/* Referred Leads Table - desktop only */}
+        {!isMobile && <div>
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <ExternalLink className="h-4 w-4 text-primary" />
             Referred Leads ({filteredLeads.length})
@@ -282,7 +305,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
               </TableFooter>
             </Table>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Referrer Detail Dialog */}
