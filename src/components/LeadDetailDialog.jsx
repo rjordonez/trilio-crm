@@ -126,72 +126,21 @@ function formatTimelineDate(dateStr) {
   return `${mm}/${dd}/${yy}`;
 }
 
-function TourLogForm({ onLog, onCancel }) {
-  const [attendees, setAttendees] = useState("");
-  const [summary, setSummary] = useState("");
-
-  const handleSubmit = () => {
-    if (!attendees.trim() || !summary.trim()) return;
-    onLog({
-      id: `tour-${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      type: "tour",
-      title: "Facility tour",
-      description: summary.trim(),
-      by: "You",
-      tourNote: { tourDate: new Date().toISOString().split("T")[0], attendees: attendees.trim(), tourGuide: "You", summary: summary.trim() },
-    });
-  };
-
-  return (
-    <div className="rounded-lg border border-border p-3 space-y-2">
-      <p className="text-xs font-semibold text-foreground">Log Tour</p>
-      <input
-        type="text"
-        placeholder="Who joined? (e.g. David Clark + sister)"
-        value={attendees}
-        onChange={(e) => setAttendees(e.target.value)}
-        className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-        autoFocus
-      />
-      <textarea
-        placeholder="Tour summary notes..."
-        value={summary}
-        onChange={(e) => setSummary(e.target.value)}
-        className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onCancel} className="text-xs h-7">Cancel</Button>
-        <Button size="sm" onClick={handleSubmit} disabled={!attendees.trim() || !summary.trim()} className="text-xs h-7">Save Tour</Button>
-      </div>
-    </div>
-  );
-}
-
-function TimelineContent({ interactions, onAddNote, onAddTour }) {
+function TimelineContent({ interactions, onAddNote }) {
   const [addingNote, setAddingNote] = useState(false);
-  const [addingTour, setAddingTour] = useState(false);
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        {!addingNote && !addingTour && (
-          <>
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setAddingNote(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Note
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setAddingTour(true)}>
-              <Eye className="h-3.5 w-3.5 mr-1.5" /> Log Tour
-            </Button>
-          </>
+        {!addingNote && (
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => setAddingNote(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Note
+          </Button>
         )}
       </div>
 
       {addingNote && (
         <AudioNoteRecorder onAddNote={(note) => { onAddNote(note); setAddingNote(false); }} onCancel={() => setAddingNote(false)} />
-      )}
-      {addingTour && (
-        <TourLogForm onLog={(tour) => { onAddTour(tour); setAddingTour(false); }} onCancel={() => setAddingTour(false)} />
       )}
 
       {/* Timeline */}
@@ -270,25 +219,6 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
     }).catch((err) => console.error('Failed to save activity log:', err));
   };
 
-  const handleAddTour = (tour) => {
-    setLocalInteractions((prev) => [tour, ...prev]);
-    // Also add to lead's tourNotes so AI can access it
-    if (lead.tourNotes) {
-      lead.tourNotes.push(tour.tourNote);
-    } else {
-      lead.tourNotes = [tour.tourNote];
-    }
-    createActivityLog({
-      leadId: lead.id,
-      type: tour.type,
-      title: tour.title,
-      description: tour.description,
-      by: tour.by,
-      tourNote: tour.tourNote,
-      date: tour.date,
-    }).catch((err) => console.error('Failed to save tour log:', err));
-    toast({ title: "Tour logged" });
-  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -378,7 +308,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
             <EditableIntakeContent lead={lead} />
           </TabsContent>
           <TabsContent value="timeline" className="mt-4">
-            <TimelineContent interactions={interactions} onAddNote={handleAddNote} onAddTour={handleAddTour} />
+            <TimelineContent interactions={interactions} onAddNote={handleAddNote} />
           </TabsContent>
         </Tabs>
       </DialogContent>
