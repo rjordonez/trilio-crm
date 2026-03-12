@@ -70,3 +70,41 @@ CREATE TRIGGER leads_updated_at
 CREATE TRIGGER referrers_updated_at
   BEFORE UPDATE ON referrers
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Activity logs table
+CREATE TABLE activity_logs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  lead_id uuid REFERENCES leads(id) ON DELETE CASCADE NOT NULL,
+  type text NOT NULL CHECK (type IN ('call', 'email', 'tour', 'note', 'stage_change', 'meeting')),
+  title text NOT NULL,
+  description text,
+  by text,
+  tour_note jsonb,
+  date timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- Activity logs policies
+CREATE POLICY "Users can view own activity logs"
+  ON activity_logs FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own activity logs"
+  ON activity_logs FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own activity logs"
+  ON activity_logs FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own activity logs"
+  ON activity_logs FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Index for fast lookups by lead
+CREATE INDEX activity_logs_lead_id_idx ON activity_logs (lead_id);
+CREATE INDEX activity_logs_user_id_idx ON activity_logs (user_id);

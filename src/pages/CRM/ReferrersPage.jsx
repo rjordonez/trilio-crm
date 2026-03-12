@@ -149,7 +149,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                   <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReferrer(r)}>
                     <TableCell>
                       <p className="font-medium text-foreground text-sm">{r.name}</p>
-                      <p className="text-xs text-muted-foreground">{r.organization}</p>
                     </TableCell>
                     <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
                     <TableCell>
@@ -338,12 +337,30 @@ function SnapshotKPI({ icon: Icon, label, value, prev, current }) {
   );
 }
 
+const scoreOrder = { hot: 0, warm: 1, nurture: 2, cold: 3 };
+const stageOrder = { inquiry: 0, assessment_scheduled: 1, assessment_completed: 2, proposal_sent: 3, pending_decision: 4, closed: 5 };
+const scoreColors = { hot: "bg-red-500", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-400" };
+
 function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [] }) {
+  const [treeSortBy, setTreeSortBy] = useState("score");
   const referredLeads = allLeads.filter((l) => referrer.referredLeadIds.includes(l.id));
   const leadsWithHours = referredLeads.map((lead) => {
     const hours = Math.round(referrer.serviceHoursRequested / Math.max(referrer.referredLeadIds.length, 1));
     return { ...lead, hours };
   });
+
+  const sortedTreeLeads = useMemo(() => {
+    const arr = [...leadsWithHours];
+    arr.sort((a, b) => {
+      switch (treeSortBy) {
+        case "score": return (scoreOrder[a.score] ?? 99) - (scoreOrder[b.score] ?? 99);
+        case "stage": return (stageOrder[a.stage] ?? 99) - (stageOrder[b.stage] ?? 99);
+        case "date": return new Date(b.inquiryDate || 0) - new Date(a.inquiryDate || 0);
+        default: return 0;
+      }
+    });
+    return arr;
+  }, [leadsWithHours, treeSortBy]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -383,47 +400,79 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
           ) : (
             <InfoRow icon={User} label="Contact" value={referrer.contactPerson} />
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-              <p className="text-[11px] text-muted-foreground">Total Referrals</p>
-              <p className="font-display text-xl font-bold text-foreground">{referredLeads.length}</p>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-              <p className="text-[11px] text-muted-foreground">Total Service Hours</p>
-              <p className="font-display text-xl font-bold text-foreground">{referrer.serviceHoursRequested}h</p>
-            </div>
-          </div>
+
+          {/* Mind Map Tree View */}
           <div>
-            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" /> Referred Leads ({referredLeads.length})
-            </h4>
-            {leadsWithHours.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No leads referred yet</p>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <ExternalLink className="h-4 w-4" /> Referral Tree ({referredLeads.length})
+              </h4>
+              {sortedTreeLeads.length > 0 && (
+                <Select value={treeSortBy} onValueChange={setTreeSortBy}>
+                  <SelectTrigger className="h-7 text-xs w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="score">By Score</SelectItem>
+                    <SelectItem value="stage">By Stage</SelectItem>
+                    <SelectItem value="date">By Date</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {sortedTreeLeads.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No referrals yet</p>
             ) : (
-              <div className="space-y-2">
-                {leadsWithHours.map((lead) => (
-                  <div key={lead.id} className="rounded-lg border border-border p-3 flex items-center justify-between cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => onLeadClick(lead)}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-primary underline underline-offset-2">{lead.name}</p>
-                        <Badge variant="outline" className="text-[10px]">{stageLabels[lead.stage]}</Badge>
-                        <Badge variant="secondary" className="text-[10px]">{lead.careLevel}</Badge>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <User className="h-3 w-3" /> Sales Rep: <span className="font-medium text-foreground">{lead.salesRep}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> <span className="font-medium text-foreground">{lead.hours}h</span> service hours
-                        </p>
+              <div className="flex flex-col items-center">
+                {/* Root node - Org card */}
+                <div className="rounded-lg border-2 border-primary bg-primary/5 px-5 py-3 text-center shadow-sm">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-semibold text-foreground">{referrer.name}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {referrer.type} &middot; {referredLeads.length} referral{referredLeads.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+
+                {/* Vertical connector from root */}
+                <div className="w-px h-6 bg-border" />
+
+                {/* Horizontal bar */}
+                {sortedTreeLeads.length > 1 && (
+                  <div className="relative w-full flex justify-center">
+                    <div
+                      className="h-px bg-border absolute top-0"
+                      style={{
+                        width: `${Math.min(100, (sortedTreeLeads.length - 1) * (100 / sortedTreeLeads.length))}%`,
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Lead nodes row */}
+                <div className="flex flex-wrap justify-center gap-x-1 gap-y-6 w-full">
+                  {sortedTreeLeads.map((lead) => (
+                    <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "120px", flex: `0 1 ${Math.max(120, Math.floor(480 / sortedTreeLeads.length))}px` }}>
+                      {/* Vertical connector to each leaf */}
+                      <div className="w-px h-5 bg-border" />
+                      {/* Lead card */}
+                      <div
+                        className="rounded-lg border border-border bg-card p-3 w-full cursor-pointer hover:border-primary hover:shadow-md transition-all text-center group"
+                        onClick={() => onLeadClick(lead)}
+                      >
+                        <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
+                        <Badge variant="secondary" className="text-[10px] mb-1">{lead.careLevel}</Badge>
+                        <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
+
           <div className="rounded-lg bg-muted/30 border border-border p-3">
             <p className="text-xs font-medium text-foreground mb-1">Notes</p>
             <p className="text-xs text-muted-foreground">{referrer.notes}</p>
