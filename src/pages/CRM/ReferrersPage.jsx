@@ -39,7 +39,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   const activePartners = localReferrers.filter((r) => r.status === "active").length;
 
   // Referrer snapshot KPIs
-  const referralLeads = leads.filter(l => l.source === "Referral");
+  const referralLeads = leads.filter(l => l.source === "Referral" || l.source === "Referral Partner");
   const referralCalled = referralLeads.filter(l => ["assessment_scheduled", "assessment_completed", "proposal_sent", "pending_decision", "closed"].includes(l.stage));
   const referralClosed = referralLeads.filter(l => l.stage === "closed");
   const convRefToCall = referralLeads.length > 0 ? Math.round((referralCalled.length / referralLeads.length) * 100) : 0;

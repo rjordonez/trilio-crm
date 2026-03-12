@@ -8,17 +8,19 @@ import { Button } from "@/components/ui/button";
 
 const initialForm = {
   name: "",
+  age: "",
   contactPerson: "",
   contactInfo: "",
   zipcode: "",
+  relationship: "",
   careType: "",
-  source: "",
-  referrerId: "",
-  score: "",
-  decisionMakers: "",
-  notes: "",
-  budget: "",
+  hoursPerDay: "",
   timeline: "",
+  budget: "",
+  source: "",
+  sourceOther: "",
+  referrerId: "",
+  notes: "",
 };
 
 export default function ManualTab({ onLeadCreated, referrers = [] }) {
@@ -38,23 +40,27 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
     const lead = {
       id: `manual-lead-${Date.now()}`,
       name: form.name || "Unknown",
+      age: form.age || "",
       contactPerson: form.contactPerson || form.name || "Unknown",
-      contactRelation: "",
+      contactRelation: form.relationship || "",
       contactPhone: form.contactInfo?.includes("@") ? "" : form.contactInfo || "",
       contactEmail: form.contactInfo?.includes("@") ? form.contactInfo : "",
       careLevel: form.careType || "Not Sure Yet",
+      hoursPerDay: form.hoursPerDay || "",
       lastContactDate: dateStr,
-      facility: "Sunrise Gardens",
+      facility: "",
       stage: "inquiry",
-      score: form.score || "cold",
-      source: form.source || "Phone Call",
-      referrerId: form.source === "Referral" ? form.referrerId || null : null,
+      score: "cold",
+      source: form.source === "Other" ? (form.sourceOther || "Other") : (form.source || "Website"),
+      referrerId: form.source === "Referral Partner" ? form.referrerId || null : null,
       inquiryDate: dateStr,
       initialContact: dateStr,
       nextActivity: "Follow-up call scheduled",
       salesRep: userName,
+      budget: form.budget || "",
+      timeline: form.timeline || "",
       intakeNote: {
-        leadSource: form.source || "Manual Entry",
+        leadSource: form.source === "Other" ? (form.sourceOther || "Other") : (form.source || "Manual Entry"),
         zipcode: form.zipcode || "",
         caller: `${form.contactPerson || form.name}`,
         dateTime: timeStr,
@@ -62,9 +68,7 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
         situationSummary: form.notes ? [form.notes] : ["No notes provided"],
         careNeeds: form.careType ? [`${form.careType} care needed`] : ["To be assessed"],
         budgetFinancial: form.budget ? [form.budget] : ["Budget to be discussed"],
-        decisionMakers: form.decisionMakers
-          ? form.decisionMakers.split(',').map(s => s.trim()).filter(Boolean)
-          : [form.contactPerson || form.name || "Unknown"],
+        decisionMakers: [form.contactPerson || form.name || "Unknown"],
         timeline: form.timeline || "To be determined",
         preferences: ["No preferences recorded yet"],
         objections: [],
@@ -80,26 +84,56 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Row 1: Patient Name, Patient Age */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Prospect Name</Label>
-          <Input placeholder="e.g. Margaret Chen" className="h-9 text-sm" value={form.name} onChange={(e) => set("name", e.target.value)} />
+          <Label className="text-xs">Patient Name</Label>
+          <Input className="h-9 text-sm" value={form.name} onChange={(e) => set("name", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Contact Person</Label>
-          <Input placeholder="e.g. Lisa Chen" className="h-9 text-sm" value={form.contactPerson} onChange={(e) => set("contactPerson", e.target.value)} />
+          <Label className="text-xs">Patient Age</Label>
+          <Input type="number" className="h-9 text-sm" value={form.age} onChange={(e) => set("age", e.target.value)} />
         </div>
       </div>
 
+      {/* Row 2: Contact Person, Relationship to Patient */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Contact</Label>
-          <Input placeholder="e.g. (555) 123-4567 or email@example.com" className="h-9 text-sm" value={form.contactInfo} onChange={(e) => set("contactInfo", e.target.value)} />
+          <Label className="text-xs">Contact Person</Label>
+          <Input className="h-9 text-sm" value={form.contactPerson} onChange={(e) => set("contactPerson", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Zipcode</Label>
-          <Input placeholder="e.g. 90007" className="h-9 text-sm" value={form.zipcode} onChange={(e) => set("zipcode", e.target.value)} />
+          <Label className="text-xs">Relationship to Patient</Label>
+          <Select value={form.relationship} onValueChange={(v) => set("relationship", v)}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select relationship" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Self">Self</SelectItem>
+              <SelectItem value="Daughter / Son">Daughter / Son</SelectItem>
+              <SelectItem value="Spouse">Spouse</SelectItem>
+              <SelectItem value="Relative">Relative</SelectItem>
+              <SelectItem value="Hospital / Social Worker">Hospital / Social Worker</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+
+      {/* Row 3: Contact, Zipcode */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Contact (Phone / Email)</Label>
+          <Input className="h-9 text-sm" value={form.contactInfo} onChange={(e) => set("contactInfo", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Zip Code</Label>
+          <Input className="h-9 text-sm" value={form.zipcode} onChange={(e) => set("zipcode", e.target.value)} />
+        </div>
+      </div>
+
+      {/* Row 4: Type of Care, Hours of Care / Day */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Type of Care</Label>
           <Select value={form.careType} onValueChange={(v) => set("careType", v)}>
@@ -116,26 +150,77 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Hours of Care / Day</Label>
+          <Select value={form.hoursPerDay} onValueChange={(v) => set("hoursPerDay", v)}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select hours" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Less than 4 hours">Less than 4 hours</SelectItem>
+              <SelectItem value="4–6 hours">4–6 hours</SelectItem>
+              <SelectItem value="8–12 hours">8–12 hours</SelectItem>
+              <SelectItem value="Overnight">Overnight</SelectItem>
+              <SelectItem value="24 hour">24 hour</SelectItem>
+              <SelectItem value="Not sure">Not sure</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
+      {/* Row 5: Timeline, Budget */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Source</Label>
-          <Select value={form.source} onValueChange={(v) => set("source", v)}>
+          <Label className="text-xs">Timeline</Label>
+          <Select value={form.timeline} onValueChange={(v) => set("timeline", v)}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select timeline" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Immediately">Immediately</SelectItem>
+              <SelectItem value="Within a few days">Within a few days</SelectItem>
+              <SelectItem value="Within a week">Within a week</SelectItem>
+              <SelectItem value="Within a month">Within a month</SelectItem>
+              <SelectItem value="Just researching">Just researching</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Budget Expectation</Label>
+          <Select value={form.budget} onValueChange={(v) => set("budget", v)}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select budget" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Under $30/hr">Under $30/hr</SelectItem>
+              <SelectItem value="$30–40/hr">$30–40/hr</SelectItem>
+              <SelectItem value="$40–50/hr">$40–50/hr</SelectItem>
+              <SelectItem value="$50+/hr">$50+/hr</SelectItem>
+              <SelectItem value="Not sure">Not sure</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Row 6: Lead Source + conditional fields */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Lead Source</Label>
+          <Select value={form.source} onValueChange={(v) => { set("source", v); if (v !== "Other") set("sourceOther", ""); }}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="Select source" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Digital Ads">Digital Ads</SelectItem>
               <SelectItem value="Website">Website</SelectItem>
-              <SelectItem value="Phone Call">Phone Call</SelectItem>
-              <SelectItem value="Walk-in">Walk-in</SelectItem>
-              <SelectItem value="Referral">Referral</SelectItem>
+              <SelectItem value="Digital Ads">Digital Ads</SelectItem>
+              <SelectItem value="Referral Partner">Referral Partner</SelectItem>
+              <SelectItem value="Existing Client Referral">Existing Client Referral</SelectItem>
               <SelectItem value="Event">Event</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {form.source === "Referral" && (
+        {form.source === "Referral Partner" && (
           <div className="space-y-1.5">
             <Label className="text-xs">Referral Partner</Label>
             <Select value={form.referrerId} onValueChange={(v) => set("referrerId", v)}>
@@ -150,41 +235,18 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
             </Select>
           </div>
         )}
-        <div className="space-y-1.5">
-          <Label className="text-xs">Lead Score</Label>
-          <Select value={form.score} onValueChange={(v) => set("score", v)}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select score" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hot">Hot</SelectItem>
-              <SelectItem value="warm">Warm</SelectItem>
-              <SelectItem value="nurture">Nurture</SelectItem>
-              <SelectItem value="cold">Cold</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {form.source === "Other" && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Specify Source</Label>
+            <Input className="h-9 text-sm" value={form.sourceOther} onChange={(e) => set("sourceOther", e.target.value)} />
+          </div>
+        )}
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-xs">Decision Makers</Label>
-        <Input placeholder="e.g. Lisa Chen (daughter), John Chen (son)" className="h-9 text-sm" value={form.decisionMakers} onChange={(e) => set("decisionMakers", e.target.value)} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Budget Range</Label>
-          <Input placeholder="e.g. $4,000-$6,000/mo" className="h-9 text-sm" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Timeline</Label>
-          <Input placeholder="e.g. Within 2 months" className="h-9 text-sm" value={form.timeline} onChange={(e) => set("timeline", e.target.value)} />
-        </div>
-      </div>
-
+      {/* Notes */}
       <div className="space-y-1.5">
         <Label className="text-xs">Notes</Label>
-        <Textarea placeholder="Situation summary, concerns, objections, or any other notes..." className="text-sm min-h-[80px]" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+        <Textarea placeholder="Caregiver preference, family dynamics, decision makers, concerns..." className="text-sm min-h-[80px]" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
       </div>
 
       <Button type="submit" className="w-full" size="sm">
