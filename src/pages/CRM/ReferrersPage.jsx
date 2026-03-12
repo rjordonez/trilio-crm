@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import TopBar from "@/components/TopBar";
-import { fetchReferrers, createReferrer } from "@/services/supabaseReferrers";
+import { createReferrer } from "@/services/supabaseReferrers";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,11 +15,11 @@ import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
 
 const stageLabels = {
-  inquiry: "Inquiry", connection: "Connection", pre_tour: "Pre-Tour",
-  post_tour: "Post-Tour", deposit: "Deposit", move_in: "Move-in",
+  inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed",
+  proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed",
 };
 
-export default function ReferrersPage({ leads = [] }) {
+export default function ReferrersPage({ leads = [], referrers = [], setReferrers }) {
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [sortKey, setSortKey] = useState("name");
@@ -31,19 +31,15 @@ export default function ReferrersPage({ leads = [] }) {
   const [filterRep, setFilterRep] = useState("all");
   const [filterCare, setFilterCare] = useState("all");
   const [addPartnerOpen, setAddPartnerOpen] = useState(false);
-  const [localReferrers, setLocalReferrers] = useState([]);
-
-  useEffect(() => {
-    fetchReferrers().then(setLocalReferrers).catch(console.error);
-  }, []);
+  const localReferrers = referrers;
 
   const totalReferrals = localReferrers.reduce((s, r) => s + r.referredLeadIds.length, 0);
   const activePartners = localReferrers.filter((r) => r.status === "active").length;
 
   // Referrer snapshot KPIs
   const referralLeads = leads.filter(l => l.source === "Referral");
-  const referralCalled = referralLeads.filter(l => ["connection", "pre_tour", "post_tour", "deposit", "move_in"].includes(l.stage));
-  const referralClosed = referralLeads.filter(l => ["deposit", "move_in"].includes(l.stage));
+  const referralCalled = referralLeads.filter(l => ["assessment_scheduled", "assessment_completed", "proposal_sent", "pending_decision", "closed"].includes(l.stage));
+  const referralClosed = referralLeads.filter(l => l.stage === "closed");
   const convRefToCall = referralLeads.length > 0 ? Math.round((referralCalled.length / referralLeads.length) * 100) : 0;
   const convRefToClose = referralLeads.length > 0 ? Math.round((referralClosed.length / referralLeads.length) * 100) : 0;
   const convCallToClose = referralCalled.length > 0 ? Math.round((referralClosed.length / referralCalled.length) * 100) : 0;
@@ -311,7 +307,7 @@ export default function ReferrersPage({ leads = [] }) {
         onAdd={async (partner) => {
           try {
             const saved = await createReferrer(partner);
-            setLocalReferrers(prev => [...prev, saved]);
+            setReferrers(prev => [...prev, saved]);
           } catch (err) {
             console.error('Failed to create referrer:', err);
           }

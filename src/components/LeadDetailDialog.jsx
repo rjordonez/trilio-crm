@@ -64,11 +64,11 @@ function EditableScoreBadge({ score, onChange }) {
 
 const stageLabel = {
   inquiry: "Inquiry",
-  connection: "Connection",
-  pre_tour: "Pre-Tour",
-  post_tour: "Post-Tour",
-  deposit: "Deposit",
-  move_in: "Move-in",
+  assessment_scheduled: "Assessment Scheduled",
+  assessment_completed: "Assessment Completed",
+  proposal_sent: "Proposal Sent",
+  pending_decision: "Pending Decision",
+  closed: "Closed",
 };
 
 function generateMockSummary(lead) {

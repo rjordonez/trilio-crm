@@ -12,6 +12,7 @@ const initialForm = {
   zipcode: "",
   careType: "",
   source: "",
+  referrerId: "",
   score: "",
   decisionMakers: "",
   notes: "",
@@ -19,7 +20,7 @@ const initialForm = {
   timeline: "",
 };
 
-export default function ManualTab({ onLeadCreated }) {
+export default function ManualTab({ onLeadCreated, referrers = [] }) {
   const [form, setForm] = useState(initialForm);
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
@@ -44,6 +45,7 @@ export default function ManualTab({ onLeadCreated }) {
       stage: "inquiry",
       score: form.score || "cold",
       source: form.source || "Phone Call",
+      referrerId: form.source === "Referral" ? form.referrerId || null : null,
       inquiryDate: dateStr,
       initialContact: dateStr,
       nextActivity: "Follow-up call scheduled",
@@ -128,6 +130,21 @@ export default function ManualTab({ onLeadCreated }) {
             </SelectContent>
           </Select>
         </div>
+        {form.source === "Referral" && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Referring Organization</Label>
+            <Select value={form.referrerId} onValueChange={(v) => set("referrerId", v)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select referrer" />
+              </SelectTrigger>
+              <SelectContent>
+                {referrers.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.name} — {r.organization}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label className="text-xs">Lead Score</Label>
           <Select value={form.score} onValueChange={(v) => set("score", v)}>

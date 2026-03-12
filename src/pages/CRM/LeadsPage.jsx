@@ -3,7 +3,8 @@ import { updateLead } from "@/services/supabaseLeads";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -24,19 +25,19 @@ import EmailComposeDialog from "@/components/EmailComposeDialog";
 
 const stages = [
   { key: "inquiry", label: "Inquiry" },
-  { key: "connection", label: "Connection" },
-  { key: "pre_tour", label: "Pre-Tour" },
-  { key: "post_tour", label: "Post-Tour" },
-  { key: "deposit", label: "Deposit" },
-  { key: "move_in", label: "Move-in" },
+  { key: "assessment_scheduled", label: "Assessment Scheduled" },
+  { key: "assessment_completed", label: "Assessment Completed" },
+  { key: "proposal_sent", label: "Proposal Sent" },
+  { key: "pending_decision", label: "Pending Decision" },
+  { key: "closed", label: "Closed" },
 ];
 
 const stageProgress = {
-  inquiry: 10, connection: 25, pre_tour: 45, post_tour: 65, deposit: 85, move_in: 100,
+  inquiry: 10, assessment_scheduled: 25, assessment_completed: 45, proposal_sent: 65, pending_decision: 85, closed: 100,
 };
 
 const stageLabel = {
-  inquiry: "Inquiry", connection: "Connection", pre_tour: "Pre-Tour", post_tour: "Post-Tour", deposit: "Deposit", move_in: "Move-in",
+  inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed", proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed",
 };
 
 const careLevelColors = {
@@ -126,7 +127,25 @@ function HeaderFilter({ label, value, options, onChange }) {
 }
 
 function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile }) {
+  const [showRejectReason, setShowRejectReason] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
   if (!lead) return null;
+
+  const handleReject = () => {
+    onStageChange(lead.id, "rejected", rejectReason || undefined);
+    setShowRejectReason(false);
+    setRejectReason("");
+    onOpenChange(false);
+  };
+
+  const handleClose = (val) => {
+    if (!val) {
+      setShowRejectReason(false);
+      setRejectReason("");
+    }
+    onOpenChange(val);
+  };
 
   const stageList = (
     <div className="space-y-1 p-4">
@@ -135,7 +154,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
           key={stage.key}
           onClick={() => {
             onStageChange(lead.id, stage.key);
-            onOpenChange(false);
+            handleClose(false);
           }}
           className={`w-full flex items-center justify-between rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
             lead.stage === stage.key
@@ -147,19 +166,54 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
           {lead.stage === stage.key && <Check className="h-4 w-4" />}
         </button>
       ))}
+
+      <div className="border-t border-border mt-2 pt-2">
+        {!showRejectReason ? (
+          <button
+            onClick={() => setShowRejectReason(true)}
+            className={`w-full flex items-center justify-between rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+              lead.stage === "rejected"
+                ? "bg-destructive text-destructive-foreground"
+                : "hover:bg-destructive/10 text-destructive"
+            }`}
+          >
+            <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" /> Reject</span>
+            {lead.stage === "rejected" && <Check className="h-4 w-4" />}
+          </button>
+        ) : (
+          <div className="space-y-2 px-1">
+            <p className="text-sm font-medium text-destructive">Reason for rejection (optional)</p>
+            <Textarea
+              placeholder="e.g. Budget too low, not ready to move..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="text-sm min-h-[60px]"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="destructive" className="flex-1" onClick={handleReject}>
+                Reject
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setShowRejectReason(false); setRejectReason(""); }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={handleClose}>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>Move {lead.name}</DrawerTitle>
           </DrawerHeader>
           {stageList}
           <div className="p-4 pt-0">
-            <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="w-full" onClick={() => handleClose(false)}>
               Cancel
             </Button>
           </div>
@@ -169,7 +223,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Move {lead.name}</DialogTitle>
@@ -180,7 +234,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
   );
 }
 
-export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled }) {
+export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [] }) {
   const isMobile = useIsMobile();
   const [view, setView] = useState("table");
   const [selectedLead, setSelectedLead] = useState(null);
@@ -208,6 +262,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
 
   const filteredLeads = useMemo(() => {
     return leads.filter((l) => {
+      if (l.stage === "rejected") return false;
       if (filters.stage !== "all" && l.stage !== filters.stage) return false;
       if (filters.source !== "all" && l.source !== filters.source) return false;
       if (filters.careLevel !== "all" && l.careLevel !== filters.careLevel) return false;
@@ -233,11 +288,15 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
     updateLead(moved.id, moved).catch(console.error);
   }, [leads, setLeads]);
 
-  const handleStageChange = useCallback((leadId, newStage) => {
+  const handleStageChange = useCallback((leadId, newStage, rejectReason) => {
     setLeads((prev) =>
       prev.map((l) => {
         if (l.id === leadId) {
           const updated = { ...l, stage: newStage };
+          if (newStage === "rejected") {
+            updated.rejectedReason = rejectReason || "";
+            updated.rejectedDate = new Date().toISOString().split("T")[0];
+          }
           updateLead(leadId, updated).catch(console.error);
           return updated;
         }
@@ -245,6 +304,10 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
       })
     );
   }, [setLeads]);
+
+  // Reject lead from kanban trash icon
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const handleCall = (lead) => {
     setCallTarget({ name: lead.name, phone: lead.contactPhone });
@@ -278,12 +341,20 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                     >
                       {lead.name}
                     </p>
-                    <button
-                      onClick={() => setStageChangeLead(lead)}
-                      className="p-1.5 rounded hover:bg-muted transition-colors"
-                    >
-                      <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setRejectTarget(lead)}
+                        className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => setStageChangeLead(lead)}
+                        className="p-1.5 rounded hover:bg-muted transition-colors"
+                      >
+                        <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-2 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-xs">
@@ -356,14 +427,16 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         >
           <LayoutGrid className="h-3.5 w-3.5" /> Kanban
         </button>
-        <button
-          onClick={() => setView("table")}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            view === "table" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-          }`}
-        >
-          <TableIcon className="h-3.5 w-3.5" /> Table
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => setView("table")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              view === "table" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            <TableIcon className="h-3.5 w-3.5" /> Table
+          </button>
+        )}
         {view === "kanban" && !isMobile && (
           <div className="flex items-center gap-1.5 ml-4">
             <select
@@ -416,7 +489,15 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                                       snapshot.isDragging ? "shadow-crm-lg rotate-1" : "hover:shadow-crm-md"
                                     }`}
                                   >
-                                    <p className="text-sm font-semibold text-foreground">{lead.name}</p>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-semibold text-foreground">{lead.name}</p>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setRejectTarget(lead); }}
+                                        className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                      </button>
+                                    </div>
                                     <div className="mt-2 space-y-1.5">
                                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                         <User className="h-3 w-3" />
@@ -522,7 +603,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         isMobile={isMobile}
       />
 
-      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} />
+      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} />
 
       <CallDialog
         open={!!callTarget}
@@ -545,6 +626,42 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onStageChange={handleStageChange}
         isMobile={isMobile}
       />
+
+      {/* Reject confirmation dialog */}
+      <Dialog open={!!rejectTarget} onOpenChange={(open) => { if (!open) { setRejectTarget(null); setRejectReason(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Reject {rejectTarget?.name}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Reason (optional)</label>
+              <Textarea
+                placeholder="e.g. Budget too low, not ready to move..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="text-sm min-h-[60px]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  handleStageChange(rejectTarget.id, "rejected", rejectReason || undefined);
+                  setRejectTarget(null);
+                  setRejectReason("");
+                }}
+              >
+                Reject
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setRejectTarget(null); setRejectReason(""); }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {view === "kanban" && !isMobile && (
         <p className="fixed bottom-4 left-1/2 -translate-x-1/2 text-xs text-muted-foreground/60 bg-muted/50 px-4 py-1.5 rounded-full backdrop-blur-sm">Drag and drop prospects to update their pipeline stage</p>

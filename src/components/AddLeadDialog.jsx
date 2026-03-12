@@ -6,7 +6,7 @@ import ManualTab from "@/components/add-lead/ManualTab";
 import RecordingTab from "@/components/add-lead/RecordingTab";
 import DemoTab from "@/components/add-lead/DemoTab";
 
-export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMobile }) {
+export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMobile, referrers = [] }) {
   const [tab, setTab] = useState("manual");
   const [resetKey, setResetKey] = useState(0);
 
@@ -51,7 +51,7 @@ export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMob
           </TabsList>
 
           <TabsContent value="manual" className="space-y-4 mt-4">
-            <ManualTab onLeadCreated={handleLeadCreated} />
+            <ManualTab onLeadCreated={handleLeadCreated} referrers={referrers} />
           </TabsContent>
 
           <TabsContent value="recording" className="mt-4">
