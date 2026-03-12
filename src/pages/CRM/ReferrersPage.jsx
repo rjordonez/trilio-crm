@@ -57,6 +57,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
     arr.sort((a, b) => {
       switch (sortKey) {
         case "name": return dir * a.name.localeCompare(b.name);
+        case "organization": return dir * (a.organization || "").localeCompare(b.organization || "");
         case "type": return dir * a.type.localeCompare(b.type);
         case "contact": return dir * a.contactPerson.localeCompare(b.contactPerson);
         case "referrals": return dir * (a.referredLeadIds.length - b.referredLeadIds.length);
@@ -142,6 +143,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <span className="font-display font-semibold text-foreground text-sm">{r.referredLeadIds.length} <span className="text-[10px] text-muted-foreground font-normal">refs</span></span>
                   </div>
+                  {r.organization && <p className="text-xs text-muted-foreground mb-1">{r.organization}</p>}
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{r.type}</span>
                     <span>{r.contactPerson}</span>
@@ -155,6 +157,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                 <TableHeader>
                   <TableRow>
                     <SortableHead label="Partner" sortKeyVal="name" />
+                    <SortableHead label="Organization" sortKeyVal="organization" />
                     <SortableHead label="Type" sortKeyVal="type" />
                     <SortableHead label="Contact" sortKeyVal="contact" />
                     <TableHead className="text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("referrals")}>
@@ -172,6 +175,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                       <TableCell>
                         <p className="font-medium text-foreground text-sm">{r.name}</p>
                       </TableCell>
+                      <TableCell><span className="text-sm text-muted-foreground">{r.organization || "—"}</span></TableCell>
                       <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
                       <TableCell>
                         <p className="text-sm text-foreground">{r.contactPerson}</p>
