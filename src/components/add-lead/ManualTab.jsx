@@ -42,7 +42,7 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
       contactRelation: "",
       contactPhone: form.contactInfo?.includes("@") ? "" : form.contactInfo || "",
       contactEmail: form.contactInfo?.includes("@") ? form.contactInfo : "",
-      careLevel: form.careType || "Assisted Living",
+      careLevel: form.careType || "Not Sure Yet",
       lastContactDate: dateStr,
       facility: "Sunrise Gardens",
       stage: "inquiry",
@@ -101,16 +101,18 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
           <Input placeholder="e.g. 90007" className="h-9 text-sm" value={form.zipcode} onChange={(e) => set("zipcode", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Care Type</Label>
+          <Label className="text-xs">Type of Care</Label>
           <Select value={form.careType} onValueChange={(v) => set("careType", v)}>
             <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select care type" />
+              <SelectValue placeholder="Select type of care" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Assisted Living">Assisted Living</SelectItem>
-              <SelectItem value="Independent Living">Independent Living</SelectItem>
-              <SelectItem value="Memory Care">Memory Care</SelectItem>
-              <SelectItem value="Skilled Nursing">Skilled Nursing</SelectItem>
+              <SelectItem value="Companion Care">Companion Care</SelectItem>
+              <SelectItem value="Personal Care">Personal Care</SelectItem>
+              <SelectItem value="Dementia / Alzheimer's">Dementia / Alzheimer's</SelectItem>
+              <SelectItem value="Post-Hospital Recovery">Post-Hospital Recovery</SelectItem>
+              <SelectItem value="24-Hour Care">24-Hour Care</SelectItem>
+              <SelectItem value="Not Sure Yet">Not Sure Yet</SelectItem>
             </SelectContent>
           </Select>
         </div>
