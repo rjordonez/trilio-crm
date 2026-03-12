@@ -549,7 +549,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                       <HeaderFilter label="Score" value={filters.score} options={scoreOptions} onChange={(v) => setFilters((f) => ({ ...f, score: v }))} />
                     </TableHead>
                     <TableHead className="min-w-[170px] whitespace-nowrap">
-                      <HeaderFilter label="Stage" value={filters.stage} options={stages.map((s) => s.key)} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
+                      <HeaderFilter label="Stage" value={filters.stage} options={[...stages.map((s) => s.key), "rejected"]} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
                     </TableHead>
                     <TableHead className="min-w-[110px] whitespace-nowrap">
                       <HeaderFilter label="Source" value={filters.source} options={sourceOptions} onChange={(v) => setFilters((f) => ({ ...f, source: v }))} />
