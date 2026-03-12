@@ -17,7 +17,7 @@ export default async function handler(req) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -41,8 +41,11 @@ ${transcription}`
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      console.error('OpenAI API error:', response.status, errorData);
+      return new Response(JSON.stringify({ error: `OpenAI error: ${response.status}`, details: errorData }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const data = await response.json();
