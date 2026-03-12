@@ -320,6 +320,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
           onClose={() => setSelectedReferrer(null)}
           onLeadClick={(lead) => { setSelectedReferrer(null); setSelectedLead(lead); }}
           allLeads={leads}
+          allReferrers={localReferrers}
         />
       )}
 
@@ -369,16 +370,32 @@ const scoreOrder = { hot: 0, warm: 1, nurture: 2, cold: 3 };
 const stageOrder = { inquiry: 0, assessment_scheduled: 1, assessment_completed: 2, proposal_sent: 3, pending_decision: 4, closed: 5 };
 const scoreColors = { hot: "bg-red-500", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-400" };
 
-function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [] }) {
+function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [], allReferrers = [] }) {
   const [treeSortBy, setTreeSortBy] = useState("score");
-  const referredLeads = allLeads.filter((l) => referrer.referredLeadIds.includes(l.id));
-  const leadsWithHours = referredLeads.map((lead) => {
-    const hours = Math.round(referrer.serviceHoursRequested / Math.max(referrer.referredLeadIds.length, 1));
-    return { ...lead, hours };
-  });
 
-  const sortedTreeLeads = useMemo(() => {
-    const arr = [...leadsWithHours];
+  // Find all referrers in the same organization
+  const orgName = referrer.organization || referrer.name;
+  const orgReferrers = useMemo(() => {
+    if (referrer.organization) {
+      return allReferrers.filter(r => r.organization === referrer.organization);
+    }
+    return [referrer];
+  }, [allReferrers, referrer]);
+
+  // Build leads per referrer
+  const referrerLeadsMap = useMemo(() => {
+    const map = {};
+    orgReferrers.forEach(r => {
+      const leads = allLeads.filter(l => r.referredLeadIds.includes(l.id));
+      map[r.id] = leads;
+    });
+    return map;
+  }, [orgReferrers, allLeads]);
+
+  const totalLeads = orgReferrers.reduce((s, r) => s + (referrerLeadsMap[r.id]?.length || 0), 0);
+
+  const sortLeads = (leads) => {
+    const arr = [...leads];
     arr.sort((a, b) => {
       switch (treeSortBy) {
         case "score": return (scoreOrder[a.score] ?? 99) - (scoreOrder[b.score] ?? 99);
@@ -388,7 +405,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
       }
     });
     return arr;
-  }, [leadsWithHours, treeSortBy]);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -433,9 +450,9 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <ExternalLink className="h-4 w-4" /> Referral Tree ({referredLeads.length})
+                <ExternalLink className="h-4 w-4" /> Referral Tree ({totalLeads})
               </h4>
-              {sortedTreeLeads.length > 0 && (
+              {totalLeads > 0 && (
                 <Select value={treeSortBy} onValueChange={setTreeSortBy}>
                   <SelectTrigger className="h-7 text-xs w-[120px]">
                     <SelectValue />
@@ -449,7 +466,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
               )}
             </div>
 
-            {sortedTreeLeads.length === 0 ? (
+            {totalLeads === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No referrals yet</p>
             ) : (
               <div className="flex flex-col items-center">
@@ -457,57 +474,84 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                 <div className="rounded-lg border-2 border-primary bg-primary/5 px-5 py-3 text-center shadow-sm">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <Building2 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold text-foreground">{referrer.organization || referrer.name}</p>
+                    <p className="text-sm font-semibold text-foreground">{orgName}</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{referrer.type}</p>
+                  <p className="text-[11px] text-muted-foreground">{referrer.type} &middot; {orgReferrers.length} partner{orgReferrers.length !== 1 ? "s" : ""}</p>
                 </div>
 
-                {/* Connector: Org → Referrer Person */}
+                {/* Connector: Org → Referrers */}
                 <div className="w-px h-5 bg-border" />
 
-                {/* Middle node - Referrer Person */}
-                <div className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-2.5 text-center shadow-sm">
-                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                    <User className="h-3.5 w-3.5 text-primary" />
-                    <p className="text-xs font-semibold text-foreground">{referrer.contactPerson}</p>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    {referrer.name} &middot; {referredLeads.length} referral{referredLeads.length !== 1 ? "s" : ""}
-                  </p>
-                </div>
-
-                {/* Connector: Referrer → Leads */}
-                <div className="w-px h-5 bg-border" />
-
-                {/* Horizontal bar */}
-                {sortedTreeLeads.length > 1 && (
-                  <div className="relative w-full flex justify-center">
+                {/* Horizontal bar for multiple referrers */}
+                {orgReferrers.length > 1 && (
+                  <div className="relative w-full flex justify-center" style={{ height: "1px" }}>
                     <div
                       className="h-px bg-border absolute top-0"
                       style={{
-                        width: `${Math.min(100, (sortedTreeLeads.length - 1) * (100 / sortedTreeLeads.length))}%`,
+                        width: `${Math.min(90, (orgReferrers.length - 1) * (100 / orgReferrers.length))}%`,
                       }}
                     />
                   </div>
                 )}
 
-                {/* Lead nodes row */}
-                <div className="flex flex-wrap justify-center gap-x-1 gap-y-6 w-full">
-                  {sortedTreeLeads.map((lead) => (
-                    <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "120px", flex: `0 1 ${Math.max(120, Math.floor(480 / sortedTreeLeads.length))}px` }}>
-                      {/* Vertical connector to each leaf */}
-                      <div className="w-px h-5 bg-border" />
-                      {/* Lead card */}
-                      <div
-                        className="rounded-lg border border-border bg-card p-3 w-full cursor-pointer hover:border-primary hover:shadow-md transition-all text-center group"
-                        onClick={() => onLeadClick(lead)}
-                      >
-                        <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
-                        <Badge variant="secondary" className="text-[10px] mb-1">{lead.careLevel}</Badge>
-                        <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
+                {/* Referrer branches */}
+                <div className="flex flex-wrap justify-center gap-x-4 gap-y-6 w-full">
+                  {orgReferrers.map((r) => {
+                    const rLeads = sortLeads(referrerLeadsMap[r.id] || []);
+                    return (
+                      <div key={r.id} className="flex flex-col items-center" style={{ minWidth: "140px", flex: `0 1 ${Math.max(160, Math.floor(520 / orgReferrers.length))}px` }}>
+                        {/* Vertical connector to referrer */}
+                        <div className="w-px h-5 bg-border" />
+
+                        {/* Referrer Person node */}
+                        <div className={`rounded-lg border bg-primary/5 px-4 py-2.5 text-center shadow-sm w-full ${r.id === referrer.id ? "border-primary/60 ring-1 ring-primary/20" : "border-primary/30"}`}>
+                          <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                            <User className="h-3.5 w-3.5 text-primary" />
+                            <p className="text-xs font-semibold text-foreground">{r.contactPerson}</p>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {r.name} &middot; {rLeads.length} referral{rLeads.length !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+
+                        {rLeads.length > 0 && (
+                          <>
+                            {/* Connector: Referrer → Leads */}
+                            <div className="w-px h-5 bg-border" />
+
+                            {/* Horizontal bar for leads */}
+                            {rLeads.length > 1 && (
+                              <div className="relative w-full flex justify-center" style={{ height: "1px" }}>
+                                <div
+                                  className="h-px bg-border absolute top-0"
+                                  style={{
+                                    width: `${Math.min(90, (rLeads.length - 1) * (100 / rLeads.length))}%`,
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Lead nodes */}
+                            <div className="flex flex-wrap justify-center gap-x-1 gap-y-4 w-full">
+                              {rLeads.map((lead) => (
+                                <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "100px", flex: `0 1 ${Math.max(100, Math.floor(300 / rLeads.length))}px` }}>
+                                  <div className="w-px h-5 bg-border" />
+                                  <div
+                                    className="rounded-lg border border-border bg-card p-3 w-full cursor-pointer hover:border-primary hover:shadow-md transition-all text-center group"
+                                    onClick={() => onLeadClick(lead)}
+                                  >
+                                    <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
+                                    <Badge variant="secondary" className="text-[10px] mb-1">{lead.careLevel}</Badge>
+                                    <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
