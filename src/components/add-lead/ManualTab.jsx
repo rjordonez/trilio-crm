@@ -137,10 +137,10 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
         </div>
         {form.source === "Referral" && (
           <div className="space-y-1.5">
-            <Label className="text-xs">Referring Partner</Label>
+            <Label className="text-xs">Referral Partner</Label>
             <Select value={form.referrerId} onValueChange={(v) => set("referrerId", v)}>
               <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Select referrer" />
+                <SelectValue placeholder="Select partner" />
               </SelectTrigger>
               <SelectContent>
                 {referrers.map((r) => (
