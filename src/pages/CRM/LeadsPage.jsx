@@ -33,11 +33,11 @@ const stages = [
 ];
 
 const stageProgress = {
-  inquiry: 10, assessment_scheduled: 25, assessment_completed: 45, proposal_sent: 65, pending_decision: 85, closed: 100,
+  inquiry: 10, assessment_scheduled: 25, assessment_completed: 45, proposal_sent: 65, pending_decision: 85, closed: 100, rejected: 0,
 };
 
 const stageLabel = {
-  inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed", proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed",
+  inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed", proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed", rejected: "Rejected",
 };
 
 const careLevelColors = {
@@ -262,7 +262,6 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
 
   const filteredLeads = useMemo(() => {
     return leads.filter((l) => {
-      if (l.stage === "rejected") return false;
       if (filters.stage !== "all" && l.stage !== filters.stage) return false;
       if (filters.source !== "all" && l.source !== filters.source) return false;
       if (filters.careLevel !== "all" && l.careLevel !== filters.careLevel) return false;
@@ -271,6 +270,8 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
       return true;
     });
   }, [leads, filters]);
+
+  const kanbanLeads = useMemo(() => filteredLeads.filter((l) => l.stage !== "rejected"), [filteredLeads]);
 
   const onDragEnd = useCallback((result) => {
     if (!result.destination) return;
@@ -321,7 +322,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const renderMobileKanban = () => (
     <div className="space-y-4">
       {stages.map((stage) => {
-        const stageLeads = filteredLeads.filter((l) => l.stage === stage.key);
+        const stageLeads = kanbanLeads.filter((l) => l.stage === stage.key);
         return (
           <div key={stage.key}>
             <div className="flex items-center gap-2 mb-2 px-1">
@@ -388,15 +389,21 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         <div
           key={lead.id}
           onClick={() => setSelectedLead(lead)}
-          className="rounded-lg border border-border bg-card p-3 shadow-crm-sm cursor-pointer active:bg-muted/50 transition-colors"
+          className={`rounded-lg border border-border bg-card p-3 shadow-crm-sm cursor-pointer active:bg-muted/50 transition-colors ${lead.stage === "rejected" ? "opacity-60" : ""}`}
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-semibold text-foreground">{lead.name}</p>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${careLevelColors[lead.careLevel]}`}>{lead.careLevel}</span>
           </div>
           <div className="flex items-center gap-2 mb-1.5">
-            <Progress value={stageProgress[lead.stage]} className="h-2 flex-1" />
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{stageLabel[lead.stage]}</span>
+            {lead.stage === "rejected" ? (
+              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-destructive/10 text-destructive">Rejected</span>
+            ) : (
+              <>
+                <Progress value={stageProgress[lead.stage]} className="h-2 flex-1" />
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{stageLabel[lead.stage]}</span>
+              </>
+            )}
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{lead.source}</span>
@@ -461,7 +468,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
             <DragDropContext onDragEnd={onDragEnd}>
               <div className="flex gap-3 min-w-max">
                 {stages.map((stage) => {
-                  const stageLeads = filteredLeads.filter((l) =>
+                  const stageLeads = kanbanLeads.filter((l) =>
                     l.stage === stage.key && (kanbanCareFilter === "all" || l.careLevel === kanbanCareFilter)
                   );
                   return (
@@ -562,16 +569,20 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} className="cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                    <TableRow key={lead.id} className={`cursor-pointer ${lead.stage === "rejected" ? "opacity-60" : ""}`} onClick={() => setSelectedLead(lead)}>
                       <TableCell className="font-medium text-foreground sticky left-0 bg-card z-10 whitespace-nowrap">{lead.name}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize whitespace-nowrap ${scoreColors[lead.score] || ""}`}>{lead.score}</span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={stageProgress[lead.stage]} className="h-2 w-16" />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">{stageLabel[lead.stage]}</span>
-                        </div>
+                        {lead.stage === "rejected" ? (
+                          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-destructive/10 text-destructive whitespace-nowrap">Rejected</span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Progress value={stageProgress[lead.stage]} className="h-2 w-16" />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">{stageLabel[lead.stage]}</span>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">{lead.source}</TableCell>
                       <TableCell>
