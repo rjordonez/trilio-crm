@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
 import { createActivityLog, fetchActivityLogs } from "@/services/supabaseActivityLogs";
@@ -263,6 +264,8 @@ function EditableStageBadge({ stage, onChange }) {
 }
 
 export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange }) {
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email || "System";
   const [aiSummary, setAiSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [localInteractions, setLocalInteractions] = useState([]);
@@ -377,7 +380,26 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
               onChange={(newStage, rejectReason) => {
                 setLocalStage(newStage);
                 if (lead) lead.stage = newStage;
-                if (newStage === "rejected" && rejectReason) lead.rejectedReason = rejectReason;
+                if (newStage === "rejected" && rejectReason) {
+                  lead.rejectedReason = rejectReason;
+                  const rejectionNote = {
+                    id: `note-${Date.now()}`,
+                    date: new Date().toISOString().split("T")[0],
+                    type: "note",
+                    title: "Lead Rejected",
+                    description: rejectReason,
+                    by: userName,
+                  };
+                  setLocalInteractions((prev) => [rejectionNote, ...prev]);
+                  createActivityLog({
+                    leadId: lead.id,
+                    type: "note",
+                    title: "Lead Rejected",
+                    description: rejectReason,
+                    by: userName,
+                    date: rejectionNote.date,
+                  }).catch((err) => console.error("Failed to save rejection log:", err));
+                }
                 onStageChange?.(lead.id, newStage, rejectReason);
               }}
             />
