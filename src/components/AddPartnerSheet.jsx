@@ -9,17 +9,13 @@ import { Mic, MicOff, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const referrerTypes = ["Hospital", "Physician", "Social Worker", "Local Communities", "Insurance", "Home Health"];
-const scoreOptions = ["hot", "warm", "cold", "nurture"];
-
 export default function AddPartnerSheet({ open, onOpenChange, onAdd }) {
   const [form, setForm] = useState({
     name: "",
-    organization: "",
     type: "",
     contactPerson: "",
     phone: "",
     email: "",
-    score: "",
     notes: "",
   });
   const [activeVoiceField, setActiveVoiceField] = useState(null);
@@ -57,7 +53,7 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd }) {
     setActiveVoiceField(null);
   };
 
-  const isValid = form.name && form.organization && form.type && form.contactPerson && form.phone && form.email && form.score && form.notes;
+  const isValid = form.name && form.type && form.contactPerson && form.phone && form.email && form.notes;
 
   const handleSubmit = () => {
     if (!isValid) {
@@ -67,12 +63,10 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd }) {
     const newPartner = {
       id: `ref-${Date.now()}`,
       name: form.name,
-      organization: form.organization,
       type: form.type,
       contactPerson: form.contactPerson,
       phone: form.phone,
       email: form.email,
-      score: form.score,
       notes: form.notes,
       referredLeadIds: [],
       serviceHoursRequested: 0,
@@ -82,7 +76,7 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd }) {
       lastReferralDate: new Date().toISOString().split("T")[0],
     };
     onAdd(newPartner);
-    setForm({ name: "", organization: "", type: "", contactPerson: "", phone: "", email: "", score: "", notes: "" });
+    setForm({ name: "", type: "", contactPerson: "", phone: "", email: "", notes: "" });
     onOpenChange(false);
     toast({ title: "Partner added", description: `${newPartner.name} has been added successfully.` });
   };
@@ -119,14 +113,6 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd }) {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Organization *</Label>
-            <div className="flex items-center gap-1">
-              <Input placeholder="e.g. Valley Medical Group" value={form.organization} onChange={e => update("organization", e.target.value)} />
-              <VoiceButton field="organization" />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
             <Label className="text-xs">Type *</Label>
             <Select value={form.type} onValueChange={v => update("type", v)}>
               <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
@@ -158,16 +144,6 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd }) {
               <Input type="email" placeholder="contact@partner.com" value={form.email} onChange={e => update("email", e.target.value)} />
               <VoiceButton field="email" />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Score *</Label>
-            <Select value={form.score} onValueChange={v => update("score", v)}>
-              <SelectTrigger><SelectValue placeholder="Select score" /></SelectTrigger>
-              <SelectContent>
-                {scoreOptions.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-1.5">
