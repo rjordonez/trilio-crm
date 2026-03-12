@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Mic, Square, Loader2, X, Keyboard, Phone, Mail, Eye, MessageSquare, Users } from "lucide-react";
 import { transcribeAudio } from '../../services/speechToText';
@@ -61,6 +62,8 @@ function ProcessingBar({ step }) {
 }
 
 export default function AudioNoteRecorder({ onAddNote, onCancel }) {
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email || 'You';
   const [mode, setMode] = useState(null); // null, 'record', 'manual'
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -138,7 +141,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
         type: type || 'note',
         title,
         description,
-        by: 'You'
+        by: userName
       });
     } catch (err) {
       console.error('Note processing error:', err);

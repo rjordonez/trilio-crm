@@ -24,8 +24,8 @@ export function AuthProvider({ children }) {
     return supabase.auth.signInWithPassword({ email, password });
   };
 
-  const signUp = (email, password) => {
-    return supabase.auth.signUp({ email, password });
+  const signUp = (email, password, fullName) => {
+    return supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
   };
 
   const signOut = () => {

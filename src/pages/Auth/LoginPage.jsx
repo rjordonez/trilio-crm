@@ -8,6 +8,7 @@ import '../../crm.css';
 export default function LoginPage() {
   const { signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,6 +20,11 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setMessage('');
+
+    if (isSignUp && !fullName.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
 
     if (isSignUp && password !== confirmPassword) {
       setError('Passwords do not match');
@@ -33,7 +39,7 @@ export default function LoginPage() {
     setLoading(true);
 
     if (isSignUp) {
-      const { error } = await signUp(email, password);
+      const { error } = await signUp(email, password, fullName.trim());
       if (error) {
         setError(error.message);
       } else {
@@ -62,6 +68,20 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Smith"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

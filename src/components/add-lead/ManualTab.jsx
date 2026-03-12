@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,8 @@ const initialForm = {
 };
 
 export default function ManualTab({ onLeadCreated, referrers = [] }) {
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email || "Unknown";
   const [form, setForm] = useState(initialForm);
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
@@ -49,13 +52,13 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
       inquiryDate: dateStr,
       initialContact: dateStr,
       nextActivity: "Follow-up call scheduled",
-      salesRep: "Alex Rivera",
+      salesRep: userName,
       intakeNote: {
         leadSource: form.source || "Manual Entry",
         zipcode: form.zipcode || "",
         caller: `${form.contactPerson || form.name}`,
         dateTime: timeStr,
-        salesRep: "Alex Rivera",
+        salesRep: userName,
         situationSummary: form.notes ? [form.notes] : ["No notes provided"],
         careNeeds: form.careType ? [`${form.careType} care needed`] : ["To be assessed"],
         budgetFinancial: form.budget ? [form.budget] : ["Budget to be discussed"],
