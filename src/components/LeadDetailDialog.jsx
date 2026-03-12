@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLef
 import { toast } from "@/hooks/use-toast";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
-import { createActivityLog } from "@/services/supabaseActivityLogs";
+import { createActivityLog, fetchActivityLogs } from "@/services/supabaseActivityLogs";
 
 const careLevelColors = {
   "Assisted Living": "bg-info/10 text-info border-info/20",
@@ -180,10 +180,32 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
   const [aiSummary, setAiSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [localInteractions, setLocalInteractions] = useState([]);
+  const [dbInteractions, setDbInteractions] = useState([]);
   const [localScore, setLocalScore] = useState(null);
 
-  // Sync interactions when lead changes
-  const interactions = lead ? [...localInteractions, ...lead.interactions] : [];
+  // Fetch saved activity logs from DB when lead changes
+  useEffect(() => {
+    if (!lead?.id) return;
+    setLocalInteractions([]);
+    setDbInteractions([]);
+    fetchActivityLogs(lead.id)
+      .then((logs) => {
+        const mapped = logs.map((log) => ({
+          id: log.id,
+          date: log.date,
+          type: log.type,
+          title: log.title,
+          description: log.description,
+          by: log.by,
+          tourNote: log.tour_note,
+        }));
+        setDbInteractions(mapped);
+      })
+      .catch((err) => console.error('Failed to fetch activity logs:', err));
+  }, [lead?.id]);
+
+  // Merge: local (unsaved optimistic) + db (persisted) + mock generated
+  const interactions = lead ? [...localInteractions, ...dbInteractions, ...lead.interactions] : [];
 
   if (!lead) return null;
 
