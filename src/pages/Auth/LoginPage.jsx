@@ -74,7 +74,7 @@ export default function LoginPage() {
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Smith"
+                placeholder=""
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -87,7 +87,7 @@ export default function LoginPage() {
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder=""
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -99,7 +99,7 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder=""
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -112,7 +112,7 @@ export default function LoginPage() {
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="••••••••"
+                placeholder=""
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
