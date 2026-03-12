@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { updateLead } from "@/services/supabaseLeads";
+import { createActivityLog } from "@/services/supabaseActivityLogs";
+import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -235,6 +237,8 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
 }
 
 export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [] }) {
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email || "System";
   const isMobile = useIsMobile();
   const [view, setView] = useState("table");
   const [selectedLead, setSelectedLead] = useState(null);
@@ -306,7 +310,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         return l;
       })
     );
-  }, [setLeads]);
+    if (newStage === "rejected") {
+      createActivityLog({
+        leadId,
+        type: "note",
+        title: "Lead Rejected",
+        description: rejectReason || "No reason provided",
+        by: userName,
+        date: new Date().toISOString().split("T")[0],
+      }).catch((err) => console.error("Failed to save rejection log:", err));
+    }
+  }, [setLeads, userName]);
 
   // Reject lead from kanban trash icon
   const [rejectTarget, setRejectTarget] = useState(null);

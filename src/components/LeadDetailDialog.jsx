@@ -391,14 +391,6 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
                     by: userName,
                   };
                   setLocalInteractions((prev) => [rejectionNote, ...prev]);
-                  createActivityLog({
-                    leadId: lead.id,
-                    type: "note",
-                    title: "Lead Rejected",
-                    description: rejectReason || "No reason provided",
-                    by: userName,
-                    date: rejectionNote.date,
-                  }).catch((err) => console.error("Failed to save rejection log:", err));
                 }
                 onStageChange?.(lead.id, newStage, rejectReason);
               }}
