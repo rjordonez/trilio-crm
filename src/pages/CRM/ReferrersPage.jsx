@@ -371,8 +371,6 @@ const stageOrder = { inquiry: 0, assessment_scheduled: 1, assessment_completed: 
 const scoreColors = { hot: "bg-red-500", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-400" };
 
 function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [], allReferrers = [] }) {
-  const [treeSortBy, setTreeSortBy] = useState("score");
-
   // Find all referrers in the same organization
   const orgName = referrer.organization || referrer.name;
   const orgReferrers = useMemo(() => {
@@ -394,18 +392,6 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
 
   const totalLeads = orgReferrers.reduce((s, r) => s + (referrerLeadsMap[r.id]?.length || 0), 0);
 
-  const sortLeads = (leads) => {
-    const arr = [...leads];
-    arr.sort((a, b) => {
-      switch (treeSortBy) {
-        case "score": return (scoreOrder[a.score] ?? 99) - (scoreOrder[b.score] ?? 99);
-        case "stage": return (stageOrder[a.stage] ?? 99) - (stageOrder[b.stage] ?? 99);
-        case "date": return new Date(b.inquiryDate || 0) - new Date(a.inquiryDate || 0);
-        default: return 0;
-      }
-    });
-    return arr;
-  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -448,23 +434,9 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
 
           {/* Mind Map Tree View */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <ExternalLink className="h-4 w-4" /> Referral Tree ({totalLeads})
-              </h4>
-              {totalLeads > 0 && (
-                <Select value={treeSortBy} onValueChange={setTreeSortBy}>
-                  <SelectTrigger className="h-7 text-xs w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="score">By Score</SelectItem>
-                    <SelectItem value="stage">By Stage</SelectItem>
-                    <SelectItem value="date">By Date</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+              <ExternalLink className="h-4 w-4" /> Referral Tree ({totalLeads})
+            </h4>
 
             {totalLeads === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No referrals yet</p>
@@ -497,7 +469,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                 {/* Referrer branches */}
                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-6 w-full">
                   {orgReferrers.map((r) => {
-                    const rLeads = sortLeads(referrerLeadsMap[r.id] || []);
+                    const rLeads = referrerLeadsMap[r.id] || [];
                     return (
                       <div key={r.id} className="flex flex-col items-center" style={{ minWidth: "140px", flex: `0 1 ${Math.max(160, Math.floor(520 / orgReferrers.length))}px` }}>
                         {/* Vertical connector to referrer */}
