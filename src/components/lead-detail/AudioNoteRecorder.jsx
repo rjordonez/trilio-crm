@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Mic, Square, Loader2, X, Keyboard, Phone, Mail, Eye, MessageSquare, Users } from "lucide-react";
 import { transcribeAudio } from '../../services/speechToText';
@@ -10,6 +10,55 @@ const noteTypes = [
   { type: 'meeting', label: 'Meeting', icon: Users },
   { type: 'note', label: 'Note', icon: MessageSquare },
 ];
+
+function ProcessingBar({ step }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    // When step changes, jump to the step's base and crawl from there
+    const base = step === 'transcribing' ? 5 : 55;
+    const cap = step === 'transcribing' ? 48 : 92;
+    setProgress(base);
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= cap) return prev;
+        // Slow down as it approaches the cap
+        const remaining = cap - prev;
+        const increment = Math.max(0.3, remaining * 0.06);
+        return Math.min(prev + increment, cap);
+      });
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [step]);
+
+  const steps = [
+    { key: 'transcribing', label: 'Transcribing audio...' },
+    { key: 'analyzing', label: 'AI formatting note...' },
+  ];
+  const currentIdx = steps.findIndex((s) => s.key === step);
+
+  return (
+    <div className="p-3 rounded-md border border-border bg-muted/30 space-y-2">
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">{steps[currentIdx]?.label || 'Processing...'}</span>
+      </div>
+      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        {steps.map((s, i) => (
+          <span key={s.key} className={i <= currentIdx ? 'text-primary font-medium' : ''}>{s.label.replace('...', '')}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AudioNoteRecorder({ onAddNote, onCancel }) {
   const [mode, setMode] = useState(null); // null, 'record', 'manual'
@@ -112,32 +161,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
   };
 
   if (processing) {
-    const steps = [
-      { key: 'transcribing', label: 'Transcribing audio...' },
-      { key: 'analyzing', label: 'AI formatting note...' },
-    ];
-    const currentIdx = steps.findIndex((s) => s.key === processingStep);
-    const progress = processingStep === 'transcribing' ? 33 : 75;
-
-    return (
-      <div className="p-3 rounded-md border border-border bg-muted/30 space-y-2">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">{steps[currentIdx]?.label || 'Processing...'}</span>
-        </div>
-        <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-[10px] text-muted-foreground">
-          {steps.map((step, i) => (
-            <span key={step.key} className={i <= currentIdx ? 'text-primary font-medium' : ''}>{step.label.replace('...', '')}</span>
-          ))}
-        </div>
-      </div>
-    );
+    return <ProcessingBar step={processingStep} />;
   }
 
   if (error) {
