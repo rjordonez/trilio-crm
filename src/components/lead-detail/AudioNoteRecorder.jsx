@@ -16,6 +16,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
+  const [processingStep, setProcessingStep] = useState(null); // 'transcribing' | 'analyzing'
   // Manual mode state
   const [selectedType, setSelectedType] = useState('note');
   const [manualTitle, setManualTitle] = useState('');
@@ -69,10 +70,12 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
 
   const processAudio = async (audioBlob) => {
     setProcessing(true);
+    setProcessingStep('transcribing');
     try {
       const result = await transcribeAudio(audioBlob, {});
       const transcription = result.transcription;
 
+      setProcessingStep('analyzing');
       const response = await fetch('/api/analyze-note', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,6 +96,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
     } catch (err) {
       console.error('Note processing error:', err);
       setProcessing(false);
+      setProcessingStep(null);
       setError('Failed to process recording. Try again or use Type Note.');
     }
   };
@@ -111,10 +115,30 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
   };
 
   if (processing) {
+    const steps = [
+      { key: 'transcribing', label: 'Transcribing audio...' },
+      { key: 'analyzing', label: 'AI formatting note...' },
+    ];
+    const currentIdx = steps.findIndex((s) => s.key === processingStep);
+    const progress = processingStep === 'transcribing' ? 33 : 75;
+
     return (
-      <div className="flex items-center gap-2 p-3 rounded-md border border-border bg-muted/30">
-        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">AI is formatting your note...</span>
+      <div className="p-3 rounded-md border border-border bg-muted/30 space-y-2">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">{steps[currentIdx]?.label || 'Processing...'}</span>
+        </div>
+        <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          {steps.map((step, i) => (
+            <span key={step.key} className={i <= currentIdx ? 'text-primary font-medium' : ''}>{step.label.replace('...', '')}</span>
+          ))}
+        </div>
       </div>
     );
   }
