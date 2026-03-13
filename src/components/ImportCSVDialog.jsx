@@ -4,52 +4,57 @@ import { Button } from "@/components/ui/button";
 import { Download, Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
 
 function generateLeadsSampleCSV() {
-  const header = "Patient Name,Age,Contact Person,Relationship,Phone,Email,Zip Code,Type of Care,Hours Per Day,Timeline,Budget,Lead Source,Notes";
-  const firstNames = ["Margaret","Robert","Dorothy","James","Helen","William","Ruth","Charles","Betty","Thomas","Patricia","Richard","Mary","Donald","Barbara","George","Nancy","Edward","Carol","Frank"];
-  const lastNames = ["Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Rodriguez","Martinez","Hernandez","Lopez","Gonzalez","Wilson","Anderson","Thomas","Taylor","Moore","Jackson","Martin","Lee"];
-  const relationships = ["Self","Daughter / Son","Spouse","Relative","Hospital / Social Worker"];
-  const careTypes = ["Companion Care","Personal Care","Dementia / Alzheimer's","Post-Hospital Recovery","24-Hour Care","Not Sure Yet"];
-  const hours = ["Less than 4 hours","4–6 hours","8–12 hours","Overnight","24 hour","Not sure"];
-  const timelines = ["Immediately","Within a few days","Within a week","Within a month","Just researching"];
-  const budgets = ["Under $30/hr","$30–40/hr","$40–50/hr","$50+/hr","Not sure"];
-  const sources = ["Website","Digital Ads","Referral Partner","Existing Client Referral","Event","Other"];
-  const zips = ["10001","10002","10003","10004","10005","10006","10007","10008","10009","10010","07001","07002","07003","07004","07005","06001","06002","06003","06004","06005"];
-
-  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const rows = [];
-
-  for (let i = 0; i < 50; i++) {
-    const fn = firstNames[i % firstNames.length];
-    const ln = lastNames[i % lastNames.length];
-    const age = 65 + Math.floor(Math.random() * 30);
-    const rel = pick(relationships);
-    const contactFn = firstNames[(i + 7) % firstNames.length];
-    const contactLn = ln;
-    const phone = `(${201 + Math.floor(Math.random() * 800)}) ${100 + Math.floor(Math.random() * 900)}-${1000 + Math.floor(Math.random() * 9000)}`;
-    const email = `${contactFn.toLowerCase()}.${contactLn.toLowerCase()}@email.com`;
-    const zip = zips[i % zips.length];
-    const care = pick(careTypes);
-    const h = pick(hours);
-    const t = pick(timelines);
-    const b = pick(budgets);
-    const s = pick(sources);
-    const notes = [
-      "Needs assistance with daily activities",
-      "Recently discharged from hospital",
-      "Looking for weekend coverage",
-      "Family seeking long-term care solution",
-      "Post-surgery recovery care needed",
-      "Spouse can no longer provide full-time care",
-      "Referred by physician",
-      "Wants live-in caregiver",
-      "Needs medication management support",
-      "Looking for bilingual caregiver",
-    ][i % 10];
-
-    rows.push(`${fn} ${ln},${age},${contactFn} ${contactLn},${rel},${phone},${email},${zip},${care},${h},${t},${b},${s},"${notes}"`);
-  }
-
-  return header + "\n" + rows.join("\n");
+  return `Patient Name,Age,Contact Person,Relationship,Phone,Email,Zip Code,Type of Care,Hours Per Day,Timeline,Budget,Lead Source,Notes
+Margaret Johnson,82,Karen Johnson,Daughter / Son,(212) 734-8901,karen.johnson@gmail.com,10024,Personal Care,4–6 hours,Within a week,$30–40/hr,Website,"Mom fell last week and needs help bathing and dressing. Lives alone in a 2BR apartment. Has arthritis in both knees."
+Robert Williams,76,Robert Williams,Self,(201) 445-2310,rwilliams76@aol.com,07102,Companion Care,Less than 4 hours,Within a month,Under $30/hr,Digital Ads,"Recently lost wife. Feeling isolated. Wants someone for companionship and light meal prep 3x per week."
+Dorothy Brown,89,Michael Brown,Daughter / Son,(718) 963-4521,mbrown.attorney@gmail.com,11201,Dementia / Alzheimer's,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Mother diagnosed with moderate Alzheimer's 2 years ago. Wandering at night. Current caregiver leaving end of month."
+James Garcia,71,Maria Garcia,Spouse,(347) 521-8834,maria.garcia.home@yahoo.com,10453,Post-Hospital Recovery,8–12 hours,Immediately,$30–40/hr,Referral Partner,"Husband had hip replacement surgery 3 days ago. Needs help with mobility and wound care for 6-8 weeks."
+Helen Miller,94,Susan Miller-Park,Daughter / Son,(914) 337-6612,susan.millerpark@outlook.com,10701,24-Hour Care,24 hour,Within a few days,$50+/hr,Existing Client Referral,"Mom can no longer be alone. Needs round-the-clock care. Has COPD and uses oxygen. Prefers female caregiver."
+William Davis,68,William Davis,Self,(212) 889-3345,wdavis68@gmail.com,10016,Personal Care,4–6 hours,Within a month,$30–40/hr,Website,"Parkinson's diagnosis. Tremors making daily tasks difficult. Needs help with meals and medication reminders."
+Ruth Rodriguez,87,Carmen Torres,Daughter / Son,(201) 998-7761,carmen.torres@hotmail.com,07030,Companion Care,Less than 4 hours,Just researching,Under $30/hr,Digital Ads,"Looking into options for mom. She's mostly independent but family worries about her being alone all day."
+Charles Martinez,79,Linda Martinez,Spouse,(646) 223-5547,lindamartinez@gmail.com,10002,Personal Care,4–6 hours,Within a week,$30–40/hr,Referral Partner,"Husband had a stroke 3 months ago. Left side weakness. Needs help with bathing and physical therapy exercises."
+Betty Hernandez,91,Jorge Hernandez,Daughter / Son,(347) 884-2219,jorge.h.care@gmail.com,10468,Dementia / Alzheimer's,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Grandmother with advanced dementia. Aggressive episodes increasing. Looking for experienced memory care aide."
+Thomas Lopez,73,Thomas Lopez,Self,(203) 776-4438,tlopez73@yahoo.com,06511,Companion Care,Less than 4 hours,Within a month,Under $30/hr,Event,"Met at senior fair. Wants help with grocery shopping and light housekeeping twice a week."
+Patricia Wilson,85,David Wilson,Daughter / Son,(212) 567-8890,dwilson.nyc@gmail.com,10033,Personal Care,8–12 hours,Within a few days,$40–50/hr,Website,"Mother recovering from pneumonia. Very weak. Needs help with all ADLs. Has a cat that caregiver must be okay with."
+Richard Anderson,77,Janet Anderson,Spouse,(201) 664-3321,janet.anderson55@aol.com,07024,Post-Hospital Recovery,4–6 hours,Immediately,$30–40/hr,Referral Partner,"Husband discharged after heart bypass. Needs wound care and medication management for 4-6 weeks."
+Mary Thomas,88,Patricia Thomas-Lee,Daughter / Son,(718) 638-9914,pthomaslee@gmail.com,11215,24-Hour Care,24 hour,Within a week,$50+/hr,Referral Partner,"Mom had a bad fall. Broken hip. Coming home from rehab next week. Needs 24/7 care at least initially."
+Donald Taylor,80,Donald Taylor,Self,(914) 725-5508,dtaylor80@gmail.com,10583,Companion Care,Less than 4 hours,Just researching,Not sure,Website,"Wife passed 6 months ago. Kids live out of state. Wants someone to drive him to appointments and keep company."
+Barbara Moore,92,Jennifer Moore,Daughter / Son,(646) 445-1127,jmoore.caregiver@gmail.com,10028,Dementia / Alzheimer's,24 hour,Immediately,$50+/hr,Existing Client Referral,"Mom needs live-in care. Early-stage Alzheimer's progressing. Gets confused at night. Needs patient and gentle caregiver."
+George Jackson,74,George Jackson,Self,(347) 229-6643,gjackson74@outlook.com,10467,Personal Care,4–6 hours,Within a month,$30–40/hr,Digital Ads,"Diabetes and neuropathy in feet. Needs help with foot care and meal prep for diabetic diet."
+Nancy Martin,86,Robert Martin Jr,Daughter / Son,(203) 348-7756,rmartin.jr@gmail.com,06901,Personal Care,8–12 hours,Within a few days,$40–50/hr,Referral Partner,"Mom broke her wrist. Can't do anything with one hand. Needs temporary help for 8-10 weeks while it heals."
+Edward Lee,70,Sophia Lee,Daughter / Son,(212) 431-8829,sophia.lee.nyc@gmail.com,10013,Post-Hospital Recovery,4–6 hours,Immediately,$30–40/hr,Referral Partner,"Father just had knee replacement. Physical therapist recommended home care aide for recovery period."
+Carol Gonzalez,83,Maria Gonzalez-Reyes,Daughter / Son,(201) 862-4417,mgonzalezreyes@yahoo.com,07087,Companion Care,Less than 4 hours,Within a week,Under $30/hr,Website,"Mom speaks mainly Spanish. Wants a bilingual caregiver for companionship and light cooking."
+Frank Harris,78,Frank Harris,Self,(718) 547-3328,fharris78@aol.com,10462,Personal Care,4–6 hours,Within a month,$30–40/hr,Event,"Has trouble getting in and out of the shower. Wants help with bathing and laundry 3 days a week."
+Eleanor Clark,90,Timothy Clark,Daughter / Son,(914) 961-2245,tim.clark.care@gmail.com,10801,24-Hour Care,24 hour,Immediately,$50+/hr,Referral Partner,"Mom was just diagnosed with congestive heart failure. Needs constant monitoring. Lives in a ranch-style home."
+Harold Lewis,72,Harold Lewis,Self,(646) 873-5514,hlewis72@gmail.com,10003,Companion Care,Less than 4 hours,Just researching,Under $30/hr,Digital Ads,"Retired teacher. Lonely since retirement. Looking for someone to chat with and help organize his home library."
+Virginia Walker,95,Deborah Walker-Kim,Daughter / Son,(347) 665-8837,dwalkerkim@outlook.com,10458,Dementia / Alzheimer's,24 hour,Within a few days,$50+/hr,Referral Partner,"Grandmother with late-stage dementia. Currently in adult day program but needs overnight and weekend coverage."
+Albert Hall,69,Susan Hall,Spouse,(203) 562-7741,susan.hall.ct@gmail.com,06510,Post-Hospital Recovery,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Husband recovering from back surgery. Cannot bend or lift. Needs help with everything for 6 weeks."
+Shirley Allen,84,Kevin Allen,Daughter / Son,(212) 749-3356,kevinallen.ny@gmail.com,10025,Personal Care,4–6 hours,Within a week,$30–40/hr,Website,"Mother has severe osteoporosis. Very fragile. Needs gentle assistance with mobility and daily activities."
+Raymond Young,75,Raymond Young,Self,(201) 339-8824,ryoung75@yahoo.com,07042,Companion Care,Less than 4 hours,Within a month,Under $30/hr,Digital Ads,"Just moved to the area. No local friends or family. Wants companion for outings and social activities."
+Martha King,88,Lisa King-Patel,Daughter / Son,(718) 852-4439,lisakingpatel@gmail.com,11217,Personal Care,8–12 hours,Within a few days,$40–50/hr,Existing Client Referral,"Mom's mobility declining rapidly. Uses walker. Needs daily help with bathing and physical therapy exercises."
+Howard Wright,81,Howard Wright,Self,(914) 472-6613,hwright81@aol.com,10530,Post-Hospital Recovery,4–6 hours,Immediately,$30–40/hr,Referral Partner,"Just had cataract surgery on both eyes. Temporarily can't drive. Needs help for 2-3 weeks."
+Frances Scott,93,Daniel Scott,Daughter / Son,(646) 334-7728,dscott.caretaker@gmail.com,10031,24-Hour Care,24 hour,Immediately,$50+/hr,Referral Partner,"Mother is bedridden. Needs full assistance. Has a Hoyer lift. Caregiver must be experienced with transfers."
+Eugene Green,67,Maria Green,Spouse,(347) 778-1145,mariagreen67@hotmail.com,10472,Personal Care,4–6 hours,Within a month,$30–40/hr,Website,"Husband has early-onset Parkinson's. Still fairly independent but needs help with fine motor tasks."
+Gladys Adams,87,Christine Adams-Wu,Daughter / Son,(203) 256-9937,cadamswu@gmail.com,06820,Companion Care,Less than 4 hours,Within a week,Under $30/hr,Referral Partner,"Mom is sharp mentally but physically limited. Wants someone to take her to church and run errands."
+Arthur Baker,79,Arthur Baker,Self,(212) 662-4418,abaker79@gmail.com,10027,Personal Care,8–12 hours,Within a few days,$40–50/hr,Digital Ads,"Had a minor stroke. Recovering well but right arm is weak. Needs help with daily tasks while doing OT."
+Edna Nelson,91,Mark Nelson,Daughter / Son,(201) 796-3329,mark.nelson.nj@yahoo.com,07652,Dementia / Alzheimer's,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Mom has moderate dementia. Leaves stove on. Got lost walking to the mailbox. Needs supervision during the day."
+Walter Carter,74,Walter Carter,Self,(718) 291-5547,wcarter74@outlook.com,11432,Post-Hospital Recovery,4–6 hours,Immediately,$30–40/hr,Event,"Discharged from hospital after blood clot. On blood thinners. Needs help with injections and monitoring."
+Mildred Mitchell,86,Sarah Mitchell-Jones,Daughter / Son,(914) 238-8834,smitchelljones@gmail.com,10591,Personal Care,4–6 hours,Within a week,$30–40/hr,Website,"Mom has macular degeneration. Legally blind. Needs help navigating home and preparing meals."
+Herman Perez,71,Carmen Perez,Spouse,(646) 559-2216,carmenperez.care@gmail.com,10040,Companion Care,Less than 4 hours,Within a month,Under $30/hr,Digital Ads,"Husband recovering from depression after retirement. Therapist suggested a companion to help with routine."
+Lucille Roberts,89,Amy Roberts,Daughter / Son,(347) 443-7738,amy.roberts.bx@gmail.com,10469,24-Hour Care,24 hour,Within a few days,$50+/hr,Referral Partner,"Mom has severe COPD and uses oxygen 24/7. Can't be alone. Current night aide is leaving."
+Clarence Turner,77,Clarence Turner,Self,(203) 874-1149,cturner77@aol.com,06516,Personal Care,4–6 hours,Just researching,$30–40/hr,Website,"Knee replacement scheduled next month. Looking into post-op home care options in advance."
+Rose Phillips,83,Michael Phillips,Daughter / Son,(212) 927-6625,mphillips.nyc@gmail.com,10032,Personal Care,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Mother fell and broke femur. Coming home from rehab facility. Needs skilled aide for recovery."
+Stanley Campbell,80,Jane Campbell,Spouse,(201) 568-4432,janecampbell@yahoo.com,07110,Companion Care,Less than 4 hours,Within a week,Under $30/hr,Existing Client Referral,"Husband is a veteran with PTSD. VA recommended companion care. Prefers male caregiver."
+Irene Parker,96,David Parker,Daughter / Son,(718) 789-3317,dparker.brooklyn@gmail.com,11225,Dementia / Alzheimer's,24 hour,Immediately,$50+/hr,Referral Partner,"Mom is 96 with advanced Alzheimer's. Needs patient caregiver experienced with sundowning behavior."
+Louis Evans,73,Louis Evans,Self,(914) 631-8846,levans73@gmail.com,10562,Post-Hospital Recovery,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Just had double bypass surgery. Needs cardiac rehab support at home and dietary meal prep."
+Hazel Edwards,85,Jennifer Edwards-Cho,Daughter / Son,(646) 887-2234,jedwardcho@outlook.com,10009,Personal Care,4–6 hours,Within a few days,$30–40/hr,Website,"Mom is diabetic. Needs insulin monitoring and diabetic-friendly meal prep. Also help with bathing."
+Norman Collins,78,Norman Collins,Self,(347) 334-9951,ncollins78@hotmail.com,10466,Companion Care,Less than 4 hours,Within a month,Under $30/hr,Digital Ads,"Lives alone in the Bronx. Wants someone to go on walks with and help with grocery shopping."
+Thelma Stewart,90,Laura Stewart-Kim,Daughter / Son,(203) 661-5543,lstewartkim@gmail.com,06830,24-Hour Care,24 hour,Within a week,$50+/hr,Existing Client Referral,"Mom needs live-in aide. Has a large home in Greenwich. Caregiver will have private room. Must drive."
+Chester Sanchez,66,Rosa Sanchez,Spouse,(212) 568-7729,rosa.sanchez.ny@gmail.com,10034,Post-Hospital Recovery,4–6 hours,Immediately,$30–40/hr,Referral Partner,"Husband had spinal fusion surgery. Strict movement restrictions. Needs help for 8-12 weeks recovery."
+Bertha Morris,84,Thomas Morris,Daughter / Son,(201) 447-6618,tmorris.nj@gmail.com,07450,Personal Care,8–12 hours,Within a few days,$40–50/hr,Referral Partner,"Mom has Parkinson's. Tremors getting worse. Falls risk increasing. Needs daily hands-on assistance."
+Lester Rogers,76,Lester Rogers,Self,(718) 624-1142,lrogers76@aol.com,11201,Companion Care,Less than 4 hours,Just researching,Not sure,Event,"Met at Brooklyn senior center event. Interested in learning about companion care services."
+Viola Reed,88,Christine Reed-Park,Daughter / Son,(914) 834-3357,creedpark@gmail.com,10804,Dementia / Alzheimer's,8–12 hours,Immediately,$40–50/hr,Referral Partner,"Mom wanders and has been found outside in her nightgown. Needs a caregiver experienced with elopement risk."
+Floyd Cook,70,Floyd Cook,Self,(646) 221-4436,fcook70@gmail.com,10011,Personal Care,4–6 hours,Within a month,$30–40/hr,Website,"Recently diagnosed with MS. Starting to have balance issues. Wants proactive help before things get worse."`;
 }
 
 function generateReferrersSampleCSV() {
