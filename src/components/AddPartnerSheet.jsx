@@ -111,9 +111,6 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
                 </Button>
               </div>
             )}
-            {form.name && !addingNew && (
-              <p className="text-[11px] text-primary font-medium">{form.name}</p>
-            )}
           </div>
 
           <div className="space-y-1.5">
