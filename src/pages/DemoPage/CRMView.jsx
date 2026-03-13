@@ -61,7 +61,7 @@ function CRMView() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard leads={leads} />;
       case 'leads':
         return (
           <LeadsPage
@@ -82,7 +82,7 @@ function CRMView() {
       case 'chatbot':
         return <ChatbotPage />;
       default:
-        return <Dashboard />;
+        return <Dashboard leads={leads} />;
     }
   };
 
