@@ -30,11 +30,12 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
   });
   const [addingNew, setAddingNew] = useState(false);
   const [newName, setNewName] = useState("");
+  const [localNames, setLocalNames] = useState([]);
 
   const existingPartners = useMemo(() => {
-    const names = referrers.map((r) => r.name).filter(Boolean);
+    const names = [...referrers.map((r) => r.name).filter(Boolean), ...localNames];
     return [...new Set(names)].sort();
-  }, [referrers]);
+  }, [referrers, localNames]);
 
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -72,7 +73,9 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
 
   const handleAddNew = () => {
     if (!newName.trim()) return;
-    update("name", newName.trim());
+    const trimmed = newName.trim();
+    setLocalNames(prev => [...prev, trimmed]);
+    update("name", trimmed);
     setAddingNew(false);
     setNewName("");
   };
