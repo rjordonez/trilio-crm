@@ -1,18 +1,23 @@
 import { createContext, useContext, useState, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { mockPipelineLeads } from "@/data/mockData";
 
 const ChatContext = createContext(null);
 
-export function ChatProvider({ leads, children }) {
-  const allLeads = leads || mockPipelineLeads;
+export function ChatProvider({ leads, referrers, children }) {
+  const allLeads = leads || [];
+  const allReferrers = referrers || [];
   const [input, setInput] = useState("");
 
   const leadsContext = allLeads.map((lead) => ({
     name: lead.name,
+    age: lead.age,
     stage: lead.stage,
+    score: lead.score,
     careLevel: lead.careLevel,
+    hoursPerDay: lead.hoursPerDay,
+    budget: lead.budget,
+    timeline: lead.timeline,
     facility: lead.facility,
     contactPerson: lead.contactPerson,
     contactRelation: lead.contactRelation,
@@ -24,18 +29,30 @@ export function ChatProvider({ leads, children }) {
     lastContactDate: lead.lastContactDate,
     inquiryDate: lead.inquiryDate,
     initialContact: lead.initialContact,
+    rejectedReason: lead.rejectedReason,
     intakeNote: lead.intakeNote,
-    tourNotes: lead.tourNotes,
   }));
 
-  // Keep a ref so the transport's body function always reads the latest leads
-  const leadsContextRef = useRef(leadsContext);
-  leadsContextRef.current = leadsContext;
+  const referrersContext = allReferrers.map((r) => ({
+    name: r.name,
+    organization: r.organization,
+    type: r.type,
+    contactPerson: r.contactPerson,
+    contactTitle: r.contactTitle,
+    email: r.email,
+    phone: r.phone,
+    referralCount: r.referredLeadIds?.length || 0,
+    status: r.status,
+    notes: r.notes,
+  }));
+
+  const contextRef = useRef({ leads: leadsContext, referrers: referrersContext });
+  contextRef.current = { leads: leadsContext, referrers: referrersContext };
 
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: () => ({ leadsContext: leadsContextRef.current }),
+      body: () => ({ leadsContext: contextRef.current.leads, referrersContext: contextRef.current.referrers }),
     }),
     onFinish: (options) => {
       console.log("Message finished:", options.message);
@@ -55,6 +72,7 @@ export function ChatProvider({ leads, children }) {
         input,
         setInput,
         leadsCount: allLeads.length,
+        referrersCount: allReferrers.length,
       }}
     >
       {children}

@@ -8,7 +8,7 @@ import Markdown from "react-markdown";
 
 export default function ChatbotPage() {
   const messagesEndRef = useRef(null);
-  const { messages, sendMessage, status, input, setInput, leadsCount } =
+  const { messages, sendMessage, status, input, setInput, leadsCount, referrersCount } =
     useChatContext();
 
   const isLoading = status === 'streaming' || status === 'submitted';
@@ -37,32 +37,32 @@ export default function ChatbotPage() {
                 Welcome to your CRM AI Assistant
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                I have access to all {leadsCount} leads in your pipeline. Ask me anything!
+                I have access to all {leadsCount} leads and {referrersCount} referral partners. Ask me anything!
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mt-6">
                 <button
-                  onClick={() => sendMessage({ text: "How many leads are in the inquiry stage?" })}
+                  onClick={() => sendMessage({ text: "Give me a summary of my pipeline" })}
                   className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
                 >
-                  💡 How many leads are in the inquiry stage?
+                  Give me a summary of my pipeline
                 </button>
                 <button
-                  onClick={() => sendMessage({ text: "Show me leads assigned to Sarah Johnson" })}
+                  onClick={() => sendMessage({ text: "Which leads need follow-up?" })}
                   className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
                 >
-                  👥 Show me leads assigned to Sarah Johnson
+                  Which leads need follow-up?
                 </button>
                 <button
-                  onClick={() => sendMessage({ text: "Which leads need follow-up this week?" })}
+                  onClick={() => sendMessage({ text: "Show me my referral partners and their performance" })}
                   className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
                 >
-                  📅 Which leads need follow-up this week?
+                  Show me my referral partners
                 </button>
                 <button
-                  onClick={() => sendMessage({ text: "Summarize the demo lead from Margaret Johnson" })}
+                  onClick={() => sendMessage({ text: "What are the hot leads I should focus on today?" })}
                   className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
                 >
-                  ✨ Summarize the demo lead
+                  What should I focus on today?
                 </button>
               </div>
             </div>

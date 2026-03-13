@@ -6,12 +6,14 @@ import {
   PanelLeftClose,
   PanelLeft,
   Sparkles,
+  Bot,
 } from "lucide-react";
 
 const navItems = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { id: "leads", icon: UserPlus, label: "Leads" },
   { id: "referrers", icon: Handshake, label: "Referrers" },
+  { id: "chatbot", icon: Bot, label: "AI Assistant" },
 ];
 
 export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigate }) {

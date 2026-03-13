@@ -13,7 +13,7 @@ import ChatbotPage from "@/pages/CRM/ChatbotPage";
 import ReferrersPage from "@/pages/CRM/ReferrersPage";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Users, Handshake, LayoutGrid } from "lucide-react";
+import { Users, Handshake, LayoutGrid, Bot } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
 import '../../crm.css';
@@ -89,7 +89,7 @@ function CRMView() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <ChatProvider leads={leads}>
+        <ChatProvider leads={leads} referrers={referrers}>
           <Toaster />
           <Sonner />
           <div className="flex h-screen overflow-hidden bg-background">
@@ -109,6 +109,7 @@ function CRMView() {
                 {[
                   { key: "leads", label: "Leads", icon: Users },
                   { key: "referrers", label: "Referrers", icon: Handshake },
+                  { key: "chatbot", label: "AI", icon: Bot },
                   { key: "dashboard", label: "Dashboard", icon: LayoutGrid },
                 ].map(({ key, label, icon: Icon }) => (
                   <button
