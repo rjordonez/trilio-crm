@@ -1,8 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, User, Calendar, Heart, DollarSign, Clock, AlertTriangle, TrendingUp, ArrowRight, Pencil, Save, X, AlertCircle, Gift, Gem } from "lucide-react";
+import { MapPin, User, Calendar, Heart, DollarSign, Clock, AlertTriangle, TrendingUp, ArrowRight, Pencil, Save, X, AlertCircle, Gift, Gem, Timer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+function daysAgoText(dateStr) {
+  if (!dateStr) return "—";
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 30) return `${diffDays} days ago`;
+  if (diffDays < 60) return "1 month ago";
+  return `${Math.floor(diffDays / 30)} months ago`;
+}
 
 function SectionHeader({ icon: Icon, title }) {
   return (
@@ -297,8 +309,8 @@ export default function EditableIntakeContent({ lead }) {
         <HeaderField icon={MapPin} label="Zipcode" value={n.zipcode} onSave={(v) => { n.zipcode = v; }} />
         <HeaderField icon={User} label="Caller" value={n.caller} onSave={(v) => { n.caller = v; }} />
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Calendar className="h-3.5 w-3.5" />
-          <span>{n.dateTime}</span>
+          <Timer className="h-3.5 w-3.5" />
+          <span>Last Contacted: <span className="text-foreground font-medium">{daysAgoText(lead.lastContactDate)}</span></span>
         </div>
         <HeaderField icon={User} label="Assigned To" value={n.salesRep} onSave={(v) => { n.salesRep = v; }} />
       </div>
