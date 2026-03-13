@@ -232,8 +232,9 @@ export default function ImportCSVDialog({ open, onOpenChange, type, onImport, us
         : parsed.map((row) => csvRowToReferrer(row));
       await onImport(items);
       setStatus("done");
-    } catch {
-      setErrorMsg("Import failed. Please try again.");
+    } catch (err) {
+      console.error("Import error:", err);
+      setErrorMsg(err?.message || "Import failed. Please try again.");
       setStatus("error");
     }
   };

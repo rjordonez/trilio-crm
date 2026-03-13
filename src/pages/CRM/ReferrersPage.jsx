@@ -342,7 +342,8 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
         onOpenChange={setImportOpen}
         type="referrers"
         onImport={async (items) => {
-          const saved = await Promise.all(items.map((r) => createReferrer(r)));
+          const { createReferrersBulk } = await import("@/services/supabaseReferrers");
+          const saved = await createReferrersBulk(items);
           setReferrers((prev) => [...prev, ...saved]);
         }}
       />

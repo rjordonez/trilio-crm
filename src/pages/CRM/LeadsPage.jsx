@@ -25,7 +25,7 @@ import AddLeadDialog from "@/components/AddLeadDialog";
 import ImportCSVDialog from "@/components/ImportCSVDialog";
 import CallDialog from "@/components/CallDialog";
 import EmailComposeDialog from "@/components/EmailComposeDialog";
-import { createLead } from "@/services/supabaseLeads";
+import { createLeadsBulk } from "@/services/supabaseLeads";
 
 const stages = [
   { key: "inquiry", label: "Inquiry" },
@@ -753,7 +753,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         type="leads"
         userName={userName}
         onImport={async (items) => {
-          const saved = await Promise.all(items.map((lead) => createLead(lead)));
+          const saved = await createLeadsBulk(items);
           setLeads((prev) => [...prev, ...saved]);
         }}
       />
