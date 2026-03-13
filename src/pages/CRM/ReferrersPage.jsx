@@ -38,13 +38,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   const totalReferrals = localReferrers.reduce((s, r) => s + r.referredLeadIds.length, 0);
   const activePartners = localReferrers.filter((r) => r.status === "active").length;
 
-  // Referrer snapshot KPIs
-  const referralLeads = leads.filter(l => l.source === "Referral" || l.source === "Referral Partner");
-  const referralCalled = referralLeads.filter(l => ["assessment_scheduled", "assessment_completed", "proposal_sent", "pending_decision", "closed"].includes(l.stage));
-  const referralClosed = referralLeads.filter(l => l.stage === "closed");
-  const convRefToCall = referralLeads.length > 0 ? Math.round((referralCalled.length / referralLeads.length) * 100) : 0;
-  const convRefToClose = referralLeads.length > 0 ? Math.round((referralClosed.length / referralLeads.length) * 100) : 0;
-  const convCallToClose = referralCalled.length > 0 ? Math.round((referralClosed.length / referralCalled.length) * 100) : 0;
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -116,12 +109,9 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
       <div className={`flex-1 overflow-auto ${isMobile ? "p-4" : "p-6"} space-y-6`}>
 
         {/* Referrer Snapshot */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <SnapshotKPI icon={Users} label="Active Partners" value={activePartners} />
           <SnapshotKPI icon={TrendingUp} label="Total Referrals" value={totalReferrals} />
-          <SnapshotKPI label="Ref → Call" value={`${convRefToCall}%`} prev={55} current={convRefToCall} />
-          <SnapshotKPI label="Ref → Close" value={`${convRefToClose}%`} prev={20} current={convRefToClose} />
-          <SnapshotKPI label="Call → Close" value={`${convCallToClose}%`} prev={30} current={convCallToClose} />
         </div>
 
         {/* Partners */}
