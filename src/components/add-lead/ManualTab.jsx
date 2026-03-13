@@ -5,6 +5,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { createReferrer } from "@/services/supabaseReferrers";
+import { toast } from "@/hooks/use-toast";
+
+const partnerTypes = [
+  "Hospital / Facility",
+  "Physician / Clinician",
+  "Social Worker / Case Manager",
+  "Community Organization / Nonprofit",
+  "Current Client / Family",
+  "Home Health Agency",
+  "Placement Specialist",
+  "Other",
+];
 
 const initialForm = {
   name: "",
@@ -23,12 +37,54 @@ const initialForm = {
   notes: "",
 };
 
-export default function ManualTab({ onLeadCreated, referrers = [] }) {
+export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded }) {
   const { user } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "Unknown";
   const [form, setForm] = useState(initialForm);
+  const [addingPartner, setAddingPartner] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({
+    name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "",
+  });
+  const [savingPartner, setSavingPartner] = useState(false);
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+  const setPartner = (field, value) => setPartnerForm((f) => ({ ...f, [field]: value }));
+
+  const partnerValid = partnerForm.name && partnerForm.contactPerson && partnerForm.email && partnerForm.type;
+
+  const handleAddPartner = async () => {
+    if (!partnerValid) return;
+    setSavingPartner(true);
+    try {
+      const newPartner = {
+        name: partnerForm.name,
+        organization: partnerForm.name,
+        type: partnerForm.type,
+        contactPerson: partnerForm.contactPerson,
+        contactTitle: partnerForm.contactTitle,
+        phone: partnerForm.phone,
+        email: partnerForm.email,
+        notes: partnerForm.notes,
+        referredLeadIds: [],
+        serviceHoursRequested: 0,
+        commissionRate: 0,
+        totalCommission: 0,
+        status: "active",
+        lastReferralDate: new Date().toISOString().split("T")[0],
+      };
+      const saved = await createReferrer(newPartner);
+      onReferrerAdded?.(saved);
+      set("referrerId", saved.id);
+      setAddingPartner(false);
+      setPartnerForm({ name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "" });
+      toast({ title: "Partner added", description: `${saved.name} has been added.` });
+    } catch (err) {
+      console.error("Failed to add partner:", err);
+      toast({ title: "Error", description: "Failed to add partner.", variant: "destructive" });
+    } finally {
+      setSavingPartner(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -220,19 +276,24 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
             </SelectContent>
           </Select>
         </div>
-        {form.source === "Referral Partner" && (
+        {form.source === "Referral Partner" && !addingPartner && (
           <div className="space-y-1.5">
             <Label className="text-xs">Referral Partner</Label>
-            <Select value={form.referrerId} onValueChange={(v) => set("referrerId", v)}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Select partner" />
-              </SelectTrigger>
-              <SelectContent>
-                {referrers.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={form.referrerId} onValueChange={(v) => set("referrerId", v)}>
+                <SelectTrigger className="h-9 text-sm flex-1">
+                  <SelectValue placeholder="Select partner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {referrers.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={() => setAddingPartner(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
         {form.source === "Other" && (
@@ -242,6 +303,62 @@ export default function ManualTab({ onLeadCreated, referrers = [] }) {
           </div>
         )}
       </div>
+
+      {/* Inline Add Partner Form */}
+      {form.source === "Referral Partner" && addingPartner && (
+        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-semibold">Add New Partner</Label>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAddingPartner(false)}>Cancel</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Partner Name *</Label>
+              <Input className="h-9 text-sm" value={partnerForm.name} onChange={(e) => setPartner("name", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Primary Contact Person *</Label>
+              <Input className="h-9 text-sm" value={partnerForm.contactPerson} onChange={(e) => setPartner("contactPerson", e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Title</Label>
+              <Input className="h-9 text-sm" value={partnerForm.contactTitle} onChange={(e) => setPartner("contactTitle", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email *</Label>
+              <Input type="email" className="h-9 text-sm" value={partnerForm.email} onChange={(e) => setPartner("email", e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Phone</Label>
+              <Input className="h-9 text-sm" value={partnerForm.phone} onChange={(e) => setPartner("phone", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Partner Type *</Label>
+              <Select value={partnerForm.type} onValueChange={(v) => setPartner("type", v)}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {partnerTypes.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Notes</Label>
+            <Textarea className="text-sm min-h-[60px]" value={partnerForm.notes} onChange={(e) => setPartner("notes", e.target.value)} />
+          </div>
+          <Button type="button" size="sm" onClick={handleAddPartner} disabled={!partnerValid || savingPartner}>
+            {savingPartner ? "Adding..." : "Add Partner"}
+          </Button>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="space-y-1.5">

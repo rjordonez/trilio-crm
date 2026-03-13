@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ManualTab from "@/components/add-lead/ManualTab";
 
-export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMobile, referrers = [] }) {
+export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMobile, referrers = [], onReferrerAdded }) {
   const [resetKey, setResetKey] = useState(0);
 
   const handleOpenChange = useCallback((newOpen) => {
@@ -26,7 +26,7 @@ export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMob
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          <ManualTab key={resetKey} onLeadCreated={handleLeadCreated} referrers={referrers} />
+          <ManualTab key={resetKey} onLeadCreated={handleLeadCreated} referrers={referrers} onReferrerAdded={onReferrerAdded} />
         </div>
       </DialogContent>
     </Dialog>

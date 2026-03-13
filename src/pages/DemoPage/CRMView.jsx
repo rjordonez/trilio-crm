@@ -58,6 +58,10 @@ function CRMView() {
     setAutoOpenLeadId(null);
   }, []);
 
+  const handleReferrerAdded = useCallback((saved) => {
+    setReferrers((prev) => [...prev, saved]);
+  }, []);
+
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
@@ -71,6 +75,7 @@ function CRMView() {
             autoOpenLeadId={autoOpenLeadId}
             onAutoOpenHandled={handleAutoOpenHandled}
             referrers={referrers}
+            onReferrerAdded={handleReferrerAdded}
           />
         );
       case 'referrers':
