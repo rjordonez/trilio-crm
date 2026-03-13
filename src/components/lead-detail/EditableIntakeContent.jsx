@@ -179,80 +179,34 @@ function InlineEditableInput({ displayValue, onSave, placeholder }) {
   );
 }
 
-function HeaderField({ icon: Icon, label, value, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [display, setDisplay] = useState(value || "");
-  const inputRef = useRef(null);
-
-  const startEditing = () => {
-    setDraft(display);
-    setEditing(true);
-  };
-
-  useEffect(() => {
-    if (editing && inputRef.current) inputRef.current.focus();
-  }, [editing]);
-
-  const commit = () => {
-    const trimmed = draft.trim();
-    onSave(trimmed);
-    setDisplay(trimmed);
-    setEditing(false);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); inputRef.current?.blur(); }
-    if (e.key === "Escape") setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="shrink-0">{label}:</span>
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={handleKeyDown}
-          className="flex-1 min-w-0 text-sm text-foreground font-medium bg-background/50 border border-dashed border-muted-foreground/25 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 text-muted-foreground cursor-text hover:bg-muted/60 rounded px-1 -mx-1 py-0.5" onClick={startEditing}>
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span>{label}: <span className="text-foreground font-medium">{display || <span className="italic text-muted-foreground/50">Click to add...</span>}</span></span>
-    </div>
-  );
-}
-
 export default function EditableIntakeContent({ lead }) {
   const n = lead.intakeNote;
   const [editingMustKnow, setEditingMustKnow] = useState(false);
   const [mustKnowDraft, setMustKnowDraft] = useState("");
-  const [maritalStatus, setMaritalStatus] = useState(lead.maritalStatus || "");
-  const [specialDates, setSpecialDates] = useState(
-    lead.specialDates && lead.specialDates.length > 0
-      ? lead.specialDates.map((sd) => `${sd.type}: ${sd.date}`).join(", ")
-      : ""
-  );
+  const [personalNotes, setPersonalNotes] = useState(lead.personalNotes || "");
   const [intakeState, setIntakeState] = useState(() => {
+    const placeholders = new Set([
+      "No notes provided", "To be assessed", "Budget to be discussed",
+      "No preferences recorded yet", "To be determined",
+      "Manually entered lead", "Requires initial assessment",
+      "Schedule initial call", "Complete intake assessment",
+    ]);
     const init = {};
     for (const sec of sections) {
-      const val = n[sec.key];
-      init[sec.key] = Array.isArray(val) ? val.join(". ") + "." : val || "";
+      let val = n[sec.key];
+      if (Array.isArray(val)) {
+        val = val.filter((v) => !placeholders.has(v));
+      } else if (typeof val === "string" && placeholders.has(val)) {
+        val = "";
+      }
+      init[sec.key] = Array.isArray(val) && val.length > 0 ? val.join(". ") + "." : (Array.isArray(val) ? "" : val || "");
     }
     return init;
   });
 
   const handleSave = (key, newVal) => {
     n[key] = newVal;
-    const display = Array.isArray(newVal) ? newVal.join(". ") + "." : newVal || "";
+    const display = Array.isArray(newVal) && newVal.length > 0 ? newVal.join(". ") + "." : (Array.isArray(newVal) ? "" : newVal || "");
     setIntakeState((prev) => ({ ...prev, [key]: display }));
   };
 
@@ -303,42 +257,40 @@ export default function EditableIntakeContent({ lead }) {
         </div>
       )}
 
-      {/* Header info */}
-      <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
-        <HeaderField icon={MapPin} label="Lead Source" value={n.leadSource} onSave={(v) => { n.leadSource = v; }} />
-        <HeaderField icon={MapPin} label="Zipcode" value={n.zipcode} onSave={(v) => { n.zipcode = v; }} />
-        <HeaderField icon={User} label="Caller" value={n.caller} onSave={(v) => { n.caller = v; }} />
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className="h-3.5 w-3.5" />
-          <span>Last Contacted: <span className="text-foreground font-medium">{daysAgoText(lead.lastContactDate)}</span></span>
-        </div>
-        <HeaderField icon={User} label="Assigned To" value={n.salesRep} onSave={(v) => { n.salesRep = v; }} />
+      <Separator />
+
+      {/* Personal Notes */}
+      <div>
+        <SectionHeader icon={User} title="Personal Notes" />
+        <InlineEditableText
+          displayValue={personalNotes}
+          onSave={(val) => {
+            const text = Array.isArray(val) ? val.join(". ") : val;
+            lead.personalNotes = text;
+            setPersonalNotes(text);
+          }}
+          sectionType="single"
+        />
       </div>
 
       <Separator />
 
-      {/* Personal Info */}
+      {/* Header fields */}
       <div>
-        <SectionHeader icon={Gem} title="Marital Status" />
-        <InlineEditableInput
-          displayValue={maritalStatus}
-          onSave={(val) => { lead.maritalStatus = val; setMaritalStatus(val); }}
-          placeholder="e.g. Single, Married, Widow"
-        />
+        <SectionHeader icon={MapPin} title="Lead Source" />
+        <InlineEditableInput displayValue={n.leadSource || ""} onSave={(v) => { n.leadSource = v; }} />
       </div>
       <div>
-        <SectionHeader icon={Gift} title="Special Dates" />
-        <InlineEditableInput
-          displayValue={specialDates}
-          onSave={(val) => {
-            lead.specialDates = val.split(",").map((s) => s.trim()).filter(Boolean).map((s) => {
-              const [type, ...rest] = s.split(":");
-              return { type: type.trim(), date: (rest.join(":") || "").trim() };
-            });
-            setSpecialDates(val);
-          }}
-          placeholder="e.g. Birthday: Mar 15, Anniversary: Jun 18"
-        />
+        <SectionHeader icon={MapPin} title="Zipcode" />
+        <InlineEditableInput displayValue={n.zipcode || ""} onSave={(v) => { n.zipcode = v; }} />
+      </div>
+      <div>
+        <SectionHeader icon={User} title="Caller" />
+        <InlineEditableInput displayValue={n.caller || ""} onSave={(v) => { n.caller = v; }} />
+      </div>
+      <div>
+        <SectionHeader icon={User} title="Assigned To" />
+        <InlineEditableInput displayValue={n.salesRep || ""} onSave={(v) => { n.salesRep = v; }} />
       </div>
 
       <Separator />

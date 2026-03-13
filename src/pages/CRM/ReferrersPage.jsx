@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
+import ImportCSVDialog from "@/components/ImportCSVDialog";
 
 const stageLabels = {
   inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed",
@@ -33,6 +34,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   const [filterRep, setFilterRep] = useState("all");
   const [filterCare, setFilterCare] = useState("all");
   const [addPartnerOpen, setAddPartnerOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const localReferrers = referrers;
 
   const totalReferrals = localReferrers.reduce((s, r) => s + r.referredLeadIds.length, 0);
@@ -105,7 +107,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
 
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} />
+      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }} />
       <div className={`flex-1 overflow-auto ${isMobile ? "p-4" : "p-6"} space-y-6`}>
 
         {/* Referrer Snapshot */}
@@ -332,6 +334,16 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
           } catch (err) {
             console.error('Failed to create referrer:', err);
           }
+        }}
+      />
+
+      <ImportCSVDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="referrers"
+        onImport={async (items) => {
+          const saved = await Promise.all(items.map((r) => createReferrer(r)));
+          setReferrers((prev) => [...prev, ...saved]);
         }}
       />
     </div>

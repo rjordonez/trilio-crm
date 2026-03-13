@@ -22,8 +22,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddLeadDialog from "@/components/AddLeadDialog";
+import ImportCSVDialog from "@/components/ImportCSVDialog";
 import CallDialog from "@/components/CallDialog";
 import EmailComposeDialog from "@/components/EmailComposeDialog";
+import { createLead } from "@/services/supabaseLeads";
 
 const stages = [
   { key: "inquiry", label: "Inquiry" },
@@ -256,6 +258,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const [view, setView] = useState("table");
   const [selectedLead, setSelectedLead] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [filters, setFilters] = useState({ stage: "all", source: "all", careLevel: "all", salesRep: "all", score: "all" });
   const [stageChangeLead, setStageChangeLead] = useState(null);
   const [kanbanCareFilter, setKanbanCareFilter] = useState("all");
@@ -306,12 +309,24 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
     const otherLeads = withoutMoved.filter((l) => l.stage !== destStage);
     setLeads([...otherLeads, ...destItems]);
     updateLead(moved.id, moved).catch(console.error);
-  }, [leads, setLeads]);
+    if (sourceStage !== destStage) {
+      createActivityLog({
+        leadId: moved.id,
+        type: "note",
+        title: "Stage Changed",
+        description: `${stageLabel[sourceStage] || sourceStage} → ${stageLabel[destStage] || destStage}`,
+        by: userName,
+        date: new Date().toISOString().split("T")[0],
+      }).catch((err) => console.error("Failed to save activity log:", err));
+    }
+  }, [leads, setLeads, userName]);
 
   const handleStageChange = useCallback((leadId, newStage, rejectReason) => {
+    let oldStage = "";
     setLeads((prev) =>
       prev.map((l) => {
         if (l.id === leadId) {
+          oldStage = l.stage;
           const updated = { ...l, stage: newStage };
           if (newStage === "rejected") {
             updated.rejectedReason = rejectReason || "";
@@ -323,6 +338,9 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         return l;
       })
     );
+    const dateStr = new Date().toISOString().split("T")[0];
+    const oldLabel = stageLabel[oldStage] || oldStage;
+    const newLabel = stageLabel[newStage] || newStage;
     if (newStage === "rejected") {
       createActivityLog({
         leadId,
@@ -330,8 +348,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         title: "Lead Rejected",
         description: rejectReason || "No reason provided",
         by: userName,
-        date: new Date().toISOString().split("T")[0],
-      }).catch((err) => console.error("Failed to save rejection log:", err));
+        date: dateStr,
+      }).catch((err) => console.error("Failed to save activity log:", err));
+    } else {
+      createActivityLog({
+        leadId,
+        type: "note",
+        title: "Stage Changed",
+        description: `${oldLabel} → ${newLabel}`,
+        by: userName,
+        date: dateStr,
+      }).catch((err) => console.error("Failed to save activity log:", err));
     }
   }, [setLeads, userName]);
 
@@ -484,6 +511,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         title="Leads Pipeline"
         subtitle={`${filteredLeads.length} prospects`}
         action={{ label: "Add Lead", onClick: () => setAddOpen(true) }}
+        secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }}
         isMobile={isMobile}
       />
 
@@ -718,6 +746,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
       />
 
       <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} />
+
+      <ImportCSVDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="leads"
+        userName={userName}
+        onImport={async (items) => {
+          const saved = await Promise.all(items.map((lead) => createLead(lead)));
+          setLeads((prev) => [...prev, ...saved]);
+        }}
+      />
 
       <CallDialog
         open={!!callTarget}
