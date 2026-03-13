@@ -57,7 +57,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
     arr.sort((a, b) => {
       switch (sortKey) {
         case "name": return dir * a.name.localeCompare(b.name);
-        case "organization": return dir * (a.organization || "").localeCompare(b.organization || "");
         case "type": return dir * a.type.localeCompare(b.type);
         case "contact": return dir * a.contactPerson.localeCompare(b.contactPerson);
         case "referrals": return dir * (a.referredLeadIds.length - b.referredLeadIds.length);
@@ -143,7 +142,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <span className="font-display font-semibold text-foreground text-sm">{r.referredLeadIds.length} <span className="text-[10px] text-muted-foreground font-normal">refs</span></span>
                   </div>
-                  {r.organization && <p className="text-[11px] text-muted-foreground mb-1">{r.organization}</p>}
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
                     <span>{r.contactPerson}{r.contactTitle ? ` · ${r.contactTitle}` : ""}</span>
                   </div>
@@ -159,7 +157,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableHead label="Partner" sortKeyVal="name" />
+                    <SortableHead label="Partner Name" sortKeyVal="name" />
                     <SortableHead label="Primary Contact" sortKeyVal="contact" />
                     <SortableHead label="Type" sortKeyVal="type" />
                     <TableHead>Email</TableHead>
@@ -178,7 +176,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                     <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReferrer(r)}>
                       <TableCell>
                         <p className="font-medium text-foreground text-sm">{r.name}</p>
-                        {r.organization && <p className="text-xs text-muted-foreground">{r.organization}</p>}
                       </TableCell>
                       <TableCell>
                         <p className="text-sm text-foreground">{r.contactPerson}</p>

@@ -21,7 +21,6 @@ const partnerTypes = [
 export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers = [] }) {
   const [form, setForm] = useState({
     name: "",
-    organization: "",
     contactPerson: "",
     contactTitle: "",
     email: "",
@@ -29,12 +28,12 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
     type: "",
     notes: "",
   });
-  const [addingNewOrg, setAddingNewOrg] = useState(false);
-  const [newOrgName, setNewOrgName] = useState("");
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName] = useState("");
 
-  const existingOrgs = useMemo(() => {
-    const orgs = referrers.map((r) => r.organization).filter(Boolean);
-    return [...new Set(orgs)].sort();
+  const existingPartners = useMemo(() => {
+    const names = referrers.map((r) => r.name).filter(Boolean);
+    return [...new Set(names)].sort();
   }, [referrers]);
 
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -49,7 +48,7 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
     const newPartner = {
       id: `ref-${Date.now()}`,
       name: form.name,
-      organization: form.organization,
+      organization: form.name,
       type: form.type,
       contactPerson: form.contactPerson,
       contactTitle: form.contactTitle,
@@ -64,18 +63,18 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
       lastReferralDate: new Date().toISOString().split("T")[0],
     };
     onAdd(newPartner);
-    setForm({ name: "", organization: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "" });
-    setAddingNewOrg(false);
-    setNewOrgName("");
+    setForm({ name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "" });
+    setAddingNew(false);
+    setNewName("");
     onOpenChange(false);
     toast({ title: "Partner added", description: `${newPartner.name} has been added successfully.` });
   };
 
-  const handleAddNewOrg = () => {
-    if (!newOrgName.trim()) return;
-    update("organization", newOrgName.trim());
-    setAddingNewOrg(false);
-    setNewOrgName("");
+  const handleAddNew = () => {
+    if (!newName.trim()) return;
+    update("name", newName.trim());
+    setAddingNew(false);
+    setNewName("");
   };
 
   return (
@@ -87,39 +86,34 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
 
         <div className="space-y-4 mt-6">
           <div className="space-y-1.5">
-            <Label className="text-xs">Organization</Label>
-            {addingNewOrg ? (
+            <Label className="text-xs">Partner Name *</Label>
+            {addingNew ? (
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="New organization name"
-                  value={newOrgName}
-                  onChange={(e) => setNewOrgName(e.target.value)}
+                  placeholder="New partner name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
                   autoFocus
                 />
-                <Button size="sm" onClick={handleAddNewOrg} disabled={!newOrgName.trim()}>Add</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setAddingNewOrg(false); setNewOrgName(""); }}>Cancel</Button>
+                <Button size="sm" onClick={handleAddNew} disabled={!newName.trim()}>Add</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setAddingNew(false); setNewName(""); }}>Cancel</Button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Select value={form.organization} onValueChange={v => update("organization", v)} className="flex-1">
-                  <SelectTrigger><SelectValue placeholder="Select organization" /></SelectTrigger>
+                <Select value={form.name} onValueChange={v => update("name", v)} className="flex-1">
+                  <SelectTrigger><SelectValue placeholder="Select partner" /></SelectTrigger>
                   <SelectContent>
-                    {existingOrgs.map(org => <SelectItem key={org} value={org}>{org}</SelectItem>)}
+                    {existingPartners.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={() => setAddingNewOrg(true)}>
+                <Button size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={() => setAddingNew(true)}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
             )}
-            {form.organization && !addingNewOrg && (
-              <p className="text-[11px] text-primary font-medium">{form.organization}</p>
+            {form.name && !addingNew && (
+              <p className="text-[11px] text-primary font-medium">{form.name}</p>
             )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Partner Name *</Label>
-            <Input value={form.name} onChange={e => update("name", e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
