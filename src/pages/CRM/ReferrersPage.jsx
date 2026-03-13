@@ -139,14 +139,17 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                   className="rounded-lg border border-border bg-card p-3 shadow-crm-sm cursor-pointer active:bg-muted/50 transition-colors"
                   onClick={() => setSelectedReferrer(r)}
                 >
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <span className="font-display font-semibold text-foreground text-sm">{r.referredLeadIds.length} <span className="text-[10px] text-muted-foreground font-normal">refs</span></span>
                   </div>
-                  {r.organization && <p className="text-xs text-muted-foreground mb-1">{r.organization}</p>}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  {r.organization && <p className="text-[11px] text-muted-foreground mb-1">{r.organization}</p>}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
+                    <span>{r.contactPerson}{r.contactTitle ? ` · ${r.contactTitle}` : ""}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>{r.type}</span>
-                    <span>{r.contactPerson}</span>
+                    <span>{r.email}</span>
                   </div>
                 </div>
               ))}
@@ -157,9 +160,10 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                 <TableHeader>
                   <TableRow>
                     <SortableHead label="Partner" sortKeyVal="name" />
-                    <SortableHead label="Organization" sortKeyVal="organization" />
+                    <SortableHead label="Primary Contact" sortKeyVal="contact" />
                     <SortableHead label="Type" sortKeyVal="type" />
-                    <SortableHead label="Contact" sortKeyVal="contact" />
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead className="text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("referrals")}>
                       <span className="inline-flex items-center gap-1 justify-center">
                         Referrals
@@ -174,13 +178,15 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                     <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReferrer(r)}>
                       <TableCell>
                         <p className="font-medium text-foreground text-sm">{r.name}</p>
+                        {r.organization && <p className="text-xs text-muted-foreground">{r.organization}</p>}
                       </TableCell>
-                      <TableCell><span className="text-sm text-muted-foreground">{r.organization || "—"}</span></TableCell>
-                      <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
                       <TableCell>
                         <p className="text-sm text-foreground">{r.contactPerson}</p>
-                        <p className="text-xs text-muted-foreground">{r.phone}</p>
+                        {r.contactTitle && <p className="text-xs text-muted-foreground">{r.contactTitle}</p>}
                       </TableCell>
+                      <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
+                      <TableCell><span className="text-xs text-muted-foreground">{r.email || "—"}</span></TableCell>
+                      <TableCell><span className="text-xs text-muted-foreground">{r.phone || "—"}</span></TableCell>
                       <TableCell className="text-center">
                         <span className="font-display font-semibold text-foreground">{r.referredLeadIds.length}</span>
                       </TableCell>
