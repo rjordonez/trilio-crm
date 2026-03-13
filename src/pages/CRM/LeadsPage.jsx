@@ -68,6 +68,19 @@ function formatDate(dateStr) {
   return `${mm}/${dd}/${yy}`;
 }
 
+function daysAgoText(dateStr) {
+  if (!dateStr) return "—";
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 30) return `${diffDays} days ago`;
+  if (diffDays < 60) return "1 month ago";
+  return `${Math.floor(diffDays / 30)} months ago`;
+}
+
 function HeaderFilter({ label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
@@ -381,7 +394,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        <span>{formatDate(lead.lastContactDate)}</span>
+                        <span>{daysAgoText(lead.lastContactDate)}</span>
                       </div>
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium capitalize ${scoreColors[lead.score] || ""}`}>{lead.score}</span>
                     </div>
@@ -458,7 +471,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{lead.source}</span>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium capitalize ${scoreColors[lead.score] || ""}`}>{lead.score}</span>
-            <span>{formatDate(lead.lastContactDate)}</span>
+            <span>{daysAgoText(lead.lastContactDate)}</span>
           </div>
         </div>
       ))}
@@ -567,7 +580,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                                       </div>
                                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                         <Calendar className="h-3 w-3" />
-                                        <span>{formatDate(lead.lastContactDate)}</span>
+                                        <span>{daysAgoText(lead.lastContactDate)}</span>
                                       </div>
                                       <div className="flex items-center gap-1.5">
                                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium capitalize ${scoreColors[lead.score] || ""}`}>{lead.score}</span>
@@ -652,7 +665,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                     <TableHead className="min-w-[120px] whitespace-nowrap">Contact</TableHead>
                     <TableHead className="min-w-[95px] whitespace-nowrap">Inquiry Date</TableHead>
                     <TableHead className="min-w-[95px] whitespace-nowrap">Initial Contact</TableHead>
-                    <TableHead className="min-w-[95px] whitespace-nowrap">Last Contact</TableHead>
+                    <TableHead className="min-w-[95px] whitespace-nowrap">Last Contacted</TableHead>
                     <TableHead className="min-w-[180px] whitespace-nowrap">Next Activity</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -683,7 +696,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                       </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(lead.inquiryDate)}</TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(lead.initialContact)}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(lead.lastContactDate)}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">{daysAgoText(lead.lastContactDate)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{lead.nextActivity}</TableCell>
                     </TableRow>
                   ))}

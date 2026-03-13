@@ -3,13 +3,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X } from "lucide-react";
+import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
 import { createActivityLog, fetchActivityLogs } from "@/services/supabaseActivityLogs";
+
+function daysAgoText(dateStr) {
+  if (!dateStr) return "—";
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 30) return `${diffDays} days ago`;
+  if (diffDays < 60) return "1 month ago";
+  return `${Math.floor(diffDays / 30)} months ago`;
+}
 
 const careLevelColors = {
   "Assisted Living": "bg-info/10 text-info border-info/20",
@@ -371,6 +384,9 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
             >
               <Mail className="h-3 w-3" />{lead.contactEmail}
             </button>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />{daysAgoText(lead.lastContactDate)}
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
