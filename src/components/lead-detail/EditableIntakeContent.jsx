@@ -167,6 +167,58 @@ function InlineEditableInput({ displayValue, onSave, placeholder }) {
   );
 }
 
+function HeaderField({ icon: Icon, label, value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [display, setDisplay] = useState(value || "");
+  const inputRef = useRef(null);
+
+  const startEditing = () => {
+    setDraft(display);
+    setEditing(true);
+  };
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    onSave(trimmed);
+    setDisplay(trimmed);
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); inputRef.current?.blur(); }
+    if (e.key === "Escape") setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="shrink-0">{label}:</span>
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+          className="flex-1 min-w-0 text-sm text-foreground font-medium bg-background/50 border border-dashed border-muted-foreground/25 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-muted-foreground cursor-text hover:bg-muted/60 rounded px-1 -mx-1 py-0.5" onClick={startEditing}>
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span>{label}: <span className="text-foreground font-medium">{display || <span className="italic text-muted-foreground/50">Click to add...</span>}</span></span>
+    </div>
+  );
+}
+
 export default function EditableIntakeContent({ lead }) {
   const n = lead.intakeNote;
   const [editingMustKnow, setEditingMustKnow] = useState(false);
@@ -241,26 +293,14 @@ export default function EditableIntakeContent({ lead }) {
 
       {/* Header info */}
       <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" />
-          <span>Lead Source: <span className="text-foreground font-medium">{n.leadSource}</span></span>
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" />
-          <span>Zipcode: <span className="text-foreground font-medium">{n.zipcode}</span></span>
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <User className="h-3.5 w-3.5" />
-          <span>Caller: <span className="text-foreground font-medium">{n.caller}</span></span>
-        </div>
+        <HeaderField icon={MapPin} label="Lead Source" value={n.leadSource} onSave={(v) => { n.leadSource = v; }} />
+        <HeaderField icon={MapPin} label="Zipcode" value={n.zipcode} onSave={(v) => { n.zipcode = v; }} />
+        <HeaderField icon={User} label="Caller" value={n.caller} onSave={(v) => { n.caller = v; }} />
         <div className="flex items-center gap-2 text-muted-foreground">
           <Calendar className="h-3.5 w-3.5" />
           <span>{n.dateTime}</span>
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <User className="h-3.5 w-3.5" />
-          <span>Assign To: <span className="text-foreground font-medium">{n.salesRep}</span></span>
-        </div>
+        <HeaderField icon={User} label="Assigned To" value={n.salesRep} onSave={(v) => { n.salesRep = v; }} />
       </div>
 
       <Separator />
