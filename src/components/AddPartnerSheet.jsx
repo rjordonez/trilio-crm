@@ -15,6 +15,7 @@ const partnerTypes = [
   "Community Organization / Nonprofit",
   "Current Client / Family",
   "Home Health Agency",
+  "Placement Specialist",
   "Other",
 ];
 
