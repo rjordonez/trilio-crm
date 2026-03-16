@@ -727,6 +727,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onEmail={(lead) => handleEmail(lead)}
         onStageChange={handleStageChange}
         isMobile={isMobile}
+        referrers={referrers}
       />
 
       <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} />

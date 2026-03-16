@@ -353,7 +353,7 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange, referrers = [] }) {
   const { user } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const [aiSummary, setAiSummary] = useState(null);
@@ -550,7 +550,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </TabsList>
           <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
-            <EditableIntakeContent lead={lead} />
+            <EditableIntakeContent lead={lead} referrers={referrers} />
           </TabsContent>
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />
