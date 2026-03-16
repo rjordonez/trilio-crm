@@ -386,7 +386,40 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     return [referrer];
   }, [allReferrers, referrer]);
 
-  // Build leads per referrer
+  // Collect all contact person names across the org
+  const contactPersons = useMemo(() => {
+    const names = new Set();
+    orgReferrers.forEach(r => {
+      if (r.contactPerson) names.add(r.contactPerson);
+      if (r.contacts?.length) r.contacts.forEach(c => { if (c.name) names.add(c.name); });
+    });
+    return [...names];
+  }, [orgReferrers]);
+
+  // All leads for this org
+  const allOrgLeads = useMemo(() => {
+    const leadIds = new Set();
+    orgReferrers.forEach(r => r.referredLeadIds.forEach(id => leadIds.add(id)));
+    return allLeads.filter(l => leadIds.has(l.id));
+  }, [orgReferrers, allLeads]);
+
+  // Build leads per contact person using referredBy field
+  const contactPersonLeadsMap = useMemo(() => {
+    const map = {};
+    contactPersons.forEach(name => { map[name] = []; });
+    const primaryContact = referrer.contactPerson || contactPersons[0] || "Unknown";
+
+    allOrgLeads.forEach(lead => {
+      const assignedTo = lead.referredBy && contactPersons.includes(lead.referredBy)
+        ? lead.referredBy
+        : primaryContact;
+      if (!map[assignedTo]) map[assignedTo] = [];
+      map[assignedTo].push(lead);
+    });
+    return map;
+  }, [contactPersons, allOrgLeads, referrer.contactPerson]);
+
+  // Build legacy referrerLeadsMap for backward compat
   const referrerLeadsMap = useMemo(() => {
     const map = {};
     orgReferrers.forEach(r => {
@@ -396,7 +429,46 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     return map;
   }, [orgReferrers, allLeads]);
 
-  const totalLeads = orgReferrers.reduce((s, r) => s + (referrerLeadsMap[r.id]?.length || 0), 0);
+  const totalLeads = allOrgLeads.length;
+
+  // Analytics per contact person
+  const contactPersonStats = useMemo(() => {
+    const stats = {};
+    contactPersons.forEach(name => {
+      const leads = contactPersonLeadsMap[name] || [];
+      const closed = leads.filter(l => l.stage === "closed").length;
+      const hoursMap = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
+      const totalHours = leads.reduce((s, l) => s + (hoursMap[l.hoursPerDay] || 0), 0);
+      stats[name] = {
+        count: leads.length,
+        closed,
+        conversionRate: leads.length > 0 ? Math.round((closed / leads.length) * 100) : 0,
+        totalHours,
+      };
+    });
+    return stats;
+  }, [contactPersons, contactPersonLeadsMap]);
+
+  // Overall org stats
+  const orgStats = useMemo(() => {
+    const closed = allOrgLeads.filter(l => l.stage === "closed").length;
+    const hoursMap = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
+    const totalHours = allOrgLeads.reduce((s, l) => s + (hoursMap[l.hoursPerDay] || 0), 0);
+    let topByCount = null, topByHours = null;
+    contactPersons.forEach(name => {
+      const s = contactPersonStats[name];
+      if (!topByCount || s.count > contactPersonStats[topByCount].count) topByCount = name;
+      if (!topByHours || s.totalHours > contactPersonStats[topByHours].totalHours) topByHours = name;
+    });
+    return {
+      total: allOrgLeads.length,
+      closed,
+      conversionRate: allOrgLeads.length > 0 ? Math.round((closed / allOrgLeads.length) * 100) : 0,
+      totalHours,
+      topByCount,
+      topByHours,
+    };
+  }, [allOrgLeads, contactPersons, contactPersonStats]);
 
 
   return (
@@ -454,56 +526,62 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                     <Building2 className="h-4 w-4 text-primary" />
                     <p className="text-sm font-semibold text-foreground">{orgName}</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{referrer.type} &middot; {orgReferrers.length} partner{orgReferrers.length !== 1 ? "s" : ""}</p>
+                  <p className="text-[11px] text-muted-foreground">{referrer.type} &middot; {contactPersons.length} contact{contactPersons.length !== 1 ? "s" : ""}</p>
                 </div>
 
-                {/* Connector: Org → Referrers */}
+                {/* Connector: Org → Contact Persons */}
                 <div className="w-px h-5 bg-border" />
 
-                {/* Horizontal bar for multiple referrers */}
-                {orgReferrers.length > 1 && (
+                {/* Horizontal bar for multiple contact persons */}
+                {contactPersons.length > 1 && (
                   <div className="relative w-full flex justify-center" style={{ height: "1px" }}>
                     <div
                       className="h-px bg-border absolute top-0"
                       style={{
-                        width: `${Math.min(90, (orgReferrers.length - 1) * (100 / orgReferrers.length))}%`,
+                        width: `${Math.min(90, (contactPersons.length - 1) * (100 / contactPersons.length))}%`,
                       }}
                     />
                   </div>
                 )}
 
-                {/* Referrer branches */}
+                {/* Contact Person branches */}
                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-6 w-full">
-                  {orgReferrers.map((r) => {
-                    const rLeads = referrerLeadsMap[r.id] || [];
+                  {contactPersons.map((cpName) => {
+                    const cpLeads = contactPersonLeadsMap[cpName] || [];
+                    const cpStat = contactPersonStats[cpName] || {};
                     return (
-                      <div key={r.id} className="flex flex-col items-center" style={{ minWidth: "140px", flex: `0 1 ${Math.max(160, Math.floor(520 / orgReferrers.length))}px` }}>
-                        {/* Vertical connector to referrer */}
+                      <div key={cpName} className="flex flex-col items-center" style={{ minWidth: "140px", flex: `0 1 ${Math.max(160, Math.floor(520 / contactPersons.length))}px` }}>
+                        {/* Vertical connector to contact person */}
                         <div className="w-px h-5 bg-border" />
 
-                        {/* Referrer Person node */}
-                        <div className={`rounded-lg border bg-primary/5 px-4 py-2.5 text-center shadow-sm w-full ${r.id === referrer.id ? "border-primary/60 ring-1 ring-primary/20" : "border-primary/30"}`}>
+                        {/* Contact Person node */}
+                        <div className={`rounded-lg border bg-primary/5 px-4 py-2.5 text-center shadow-sm w-full ${cpName === referrer.contactPerson ? "border-primary/60 ring-1 ring-primary/20" : "border-primary/30"}`}>
                           <div className="flex items-center justify-center gap-1.5 mb-0.5">
                             <User className="h-3.5 w-3.5 text-primary" />
-                            <p className="text-xs font-semibold text-foreground">{r.contactPerson}</p>
+                            <p className="text-xs font-semibold text-foreground">{cpName}</p>
                           </div>
                           <p className="text-[10px] text-muted-foreground">
-                            {r.name} &middot; {rLeads.length} referral{rLeads.length !== 1 ? "s" : ""}
+                            {orgName} &middot; {cpLeads.length} referral{cpLeads.length !== 1 ? "s" : ""}
                           </p>
+                          {cpLeads.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Conversion: {cpStat.conversionRate}%
+                            </p>
+                          )}
                         </div>
 
-                        {rLeads.length > 0 && (
+                        {cpLeads.length > 0 && (
                           <>
-                            {/* Connector: Referrer → Leads */}
+                            {/* Connector: Contact Person → Leads */}
                             <div className="w-px h-5 bg-border" />
 
                             {/* Horizontal bar for leads */}
-                            {rLeads.length > 1 && (
+                            {cpLeads.length > 1 && (
                               <div className="relative w-full flex justify-center" style={{ height: "1px" }}>
                                 <div
                                   className="h-px bg-border absolute top-0"
                                   style={{
-                                    width: `${Math.min(90, (rLeads.length - 1) * (100 / rLeads.length))}%`,
+                                    width: `${Math.min(90, (cpLeads.length - 1) * (100 / cpLeads.length))}%`,
                                   }}
                                 />
                               </div>
@@ -511,8 +589,8 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
 
                             {/* Lead nodes */}
                             <div className="flex flex-wrap justify-center gap-x-1 gap-y-4 w-full">
-                              {rLeads.map((lead) => (
-                                <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "100px", flex: `0 1 ${Math.max(100, Math.floor(300 / rLeads.length))}px` }}>
+                              {cpLeads.map((lead) => (
+                                <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "100px", flex: `0 1 ${Math.max(100, Math.floor(300 / cpLeads.length))}px` }}>
                                   <div className="w-px h-5 bg-border" />
                                   <div
                                     className="rounded-lg border border-border bg-card p-3 w-full cursor-pointer hover:border-primary hover:shadow-md transition-all text-center group"
@@ -534,6 +612,63 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
               </div>
             )}
           </div>
+
+          {/* Analytics */}
+          {totalLeads > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4" /> Referral Analytics
+              </h4>
+
+              {/* Per-contact-person stats */}
+              {contactPersons.length > 0 && (
+                <div className="space-y-1.5 mb-3">
+                  {contactPersons.map(name => {
+                    const s = contactPersonStats[name];
+                    if (!s) return null;
+                    return (
+                      <div key={name} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-xs">
+                        <span className="font-medium text-foreground">{name}</span>
+                        <div className="flex items-center gap-4 text-muted-foreground">
+                          <span>{s.count} referral{s.count !== 1 ? "s" : ""}</span>
+                          <span>{s.conversionRate}% conversion</span>
+                          <span>{s.totalHours}h total</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Overall org summary */}
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total referred</span>
+                  <span className="font-semibold text-foreground">{orgStats.total} patients</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Overall conversion</span>
+                  <span className="font-semibold text-foreground">{orgStats.conversionRate}% ({orgStats.closed} closed)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total hours</span>
+                  <span className="font-semibold text-foreground">{orgStats.totalHours}h</span>
+                </div>
+                {orgStats.topByCount && contactPersons.length > 1 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Most referrals</span>
+                    <span className="font-semibold text-foreground">{orgStats.topByCount} ({contactPersonStats[orgStats.topByCount]?.count})</span>
+                  </div>
+                )}
+                {orgStats.topByHours && contactPersons.length > 1 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Highest value</span>
+                    <span className="font-semibold text-foreground">{orgStats.topByHours} ({contactPersonStats[orgStats.topByHours]?.totalHours}h)</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="rounded-lg bg-muted/30 border border-border p-3">
             <p className="text-xs font-medium text-foreground mb-1">Notes</p>

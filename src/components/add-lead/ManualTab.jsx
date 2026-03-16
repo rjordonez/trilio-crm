@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ const initialForm = {
   source: "",
   sourceOther: "",
   referrerId: "",
+  referredBy: "",
   notes: "",
 };
 
@@ -49,6 +50,18 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
   const setPartner = (field, value) => setPartnerForm((f) => ({ ...f, [field]: value }));
+
+  // Get contact persons for the selected referrer
+  const selectedPartner = referrers.find((r) => r.id === form.referrerId);
+  const contactPersonOptions = useMemo(() => {
+    if (!selectedPartner) return [];
+    const names = new Set();
+    if (selectedPartner.contactPerson) names.add(selectedPartner.contactPerson);
+    if (selectedPartner.contacts?.length) {
+      selectedPartner.contacts.forEach((c) => { if (c.name) names.add(c.name); });
+    }
+    return [...names];
+  }, [selectedPartner]);
 
   const partnerValid = partnerForm.name && partnerForm.contactPerson && partnerForm.email && partnerForm.type;
 
@@ -109,6 +122,8 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       score: "cold",
       source: form.source === "Other" ? (form.sourceOther || "Other") : (form.source || "Website"),
       referrerId: form.source === "Referral Partner" ? form.referrerId || null : null,
+      referredBy: form.source === "Referral Partner" ? form.referredBy || "" : "",
+      referPartner: form.source === "Referral Partner" ? form.referPartner || "" : "",
       inquiryDate: dateStr,
       initialContact: dateStr,
       nextActivity: "Follow-up call scheduled",
@@ -280,7 +295,12 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
           <div className="space-y-1.5">
             <Label className="text-xs">Referral Partner</Label>
             <div className="flex items-center gap-2">
-              <Select value={form.referrerId} onValueChange={(v) => set("referrerId", v)}>
+              <Select value={form.referrerId} onValueChange={(v) => {
+                set("referrerId", v);
+                set("referredBy", "");
+                const partner = referrers.find((r) => r.id === v);
+                if (partner) set("referPartner", partner.name);
+              }}>
                 <SelectTrigger className="h-9 text-sm flex-1">
                   <SelectValue placeholder="Select partner" />
                 </SelectTrigger>
@@ -294,6 +314,21 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+        )}
+        {form.source === "Referral Partner" && !addingPartner && form.referrerId && contactPersonOptions.length > 0 && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Referred By (Contact Person)</Label>
+            <Select value={form.referredBy} onValueChange={(v) => set("referredBy", v)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select contact person" />
+              </SelectTrigger>
+              <SelectContent>
+                {contactPersonOptions.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
         {form.source === "Other" && (
