@@ -137,7 +137,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
 
       onAddNote({
         id: `note-${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString(),
         type: type || 'note',
         title,
         description,
@@ -155,7 +155,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
     if (!manualTitle.trim()) return;
     onAddNote({
       id: `note-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString(),
       type: selectedType,
       title: manualTitle.trim(),
       description: manualDesc.trim(),

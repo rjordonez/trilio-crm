@@ -113,6 +113,12 @@ function parseCSVLine(line) {
   return result;
 }
 
+const knownLeadColumns = new Set([
+  "Patient Name", "Age", "Contact Person", "Relationship", "Phone", "Email",
+  "Zip Code", "Type of Care", "Hours Per Day", "Timeline", "Budget",
+  "Lead Source", "Referred By", "Notes",
+]);
+
 function csvRowToLead(row, userName) {
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
@@ -120,6 +126,16 @@ function csvRowToLead(row, userName) {
   const contactPerson = row["Contact Person"] || name;
   const contactInfo = row["Phone"] || row["Email"] || "";
   const source = row["Lead Source"] || "Other";
+
+  // Collect any extra columns not in the known set into notes
+  const extraParts = [];
+  Object.keys(row).forEach((col) => {
+    if (!knownLeadColumns.has(col) && row[col]?.trim()) {
+      extraParts.push(`${col}: ${row[col].trim()}`);
+    }
+  });
+  const notesText = row["Notes"] || "";
+  const allNotes = [notesText, ...extraParts].filter(Boolean).join(". ");
 
   return {
     id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -151,7 +167,7 @@ function csvRowToLead(row, userName) {
       caller: contactPerson,
       dateTime: now.toLocaleString(),
       salesRep: userName,
-      situationSummary: [],
+      situationSummary: allNotes ? [allNotes] : [],
       careNeeds: row["Type of Care"] ? [`${row["Type of Care"]} care needed`] : [],
       budgetFinancial: row["Budget"] ? [row["Budget"]] : [],
       decisionMakers: contactPerson ? [contactPerson] : [],
@@ -161,7 +177,7 @@ function csvRowToLead(row, userName) {
       salesRepAssessment: [],
       nextStep: [],
     },
-    personalNotes: row["Notes"] || "",
+    personalNotes: allNotes,
     interactions: [],
     callTranscripts: [],
   };

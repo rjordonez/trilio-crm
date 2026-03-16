@@ -10,6 +10,7 @@ import {
   Loader2,
   Bot,
   User,
+  Square,
 } from "lucide-react";
 import Markdown from "react-markdown";
 
@@ -17,7 +18,7 @@ export default function ChatBubble({ currentPage, onNavigate }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showGreeting, setShowGreeting] = useState(false);
   const [greetingDismissed, setGreetingDismissed] = useState(false);
-  const { messages, sendMessage, status, input, setInput } = useChatContext();
+  const { messages, sendMessage, stop, status, input, setInput } = useChatContext();
   const messagesEndRef = useRef(null);
 
   const isLoading = status === "streaming" || status === "submitted";
@@ -173,18 +174,15 @@ export default function ChatBubble({ currentPage, onNavigate }) {
                   className="min-h-[40px] max-h-[80px] resize-none text-xs"
                   onKeyDown={handleKeyDown}
                 />
-                <Button
-                  type="submit"
-                  disabled={isLoading || !input?.trim()}
-                  size="icon"
-                  className="h-[40px] w-[40px] shrink-0"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
+                {isLoading ? (
+                  <Button type="button" onClick={stop} size="icon" className="h-[40px] w-[40px] shrink-0" variant="destructive">
+                    <Square className="h-3 w-3" />
+                  </Button>
+                ) : (
+                  <Button type="submit" disabled={!input?.trim()} size="icon" className="h-[40px] w-[40px] shrink-0">
                     <Send className="h-3 w-3" />
-                  )}
-                </Button>
+                  </Button>
+                )}
               </div>
             </form>
           </div>

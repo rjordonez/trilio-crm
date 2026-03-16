@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import TopBar from "@/components/TopBar";
-import { createReferrer } from "@/services/supabaseReferrers";
+import { createReferrer, updateReferrer } from "@/services/supabaseReferrers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2, User, Phone, Mail, Clock,
-  TrendingUp, ChevronRight, Users, FileText, ExternalLink, ArrowUpDown, ArrowUpRight, ArrowDownRight, Handshake,
+  TrendingUp, ChevronRight, Users, FileText, ExternalLink, ArrowUpDown, ArrowUpRight, ArrowDownRight, Handshake, Pencil,
 } from "lucide-react";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
@@ -37,7 +37,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   const [importOpen, setImportOpen] = useState(false);
   const localReferrers = referrers;
 
-  const totalReferrals = localReferrers.reduce((s, r) => s + r.referredLeadIds.length, 0);
+  const totalReferrals = localReferrers.reduce((s, r) => s + (r.referredLeadIds || []).length, 0);
   const activePartners = localReferrers.filter((r) => r.status === "active").length;
 
 
@@ -51,10 +51,10 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
     const dir = sortDir === "asc" ? 1 : -1;
     arr.sort((a, b) => {
       switch (sortKey) {
-        case "name": return dir * a.name.localeCompare(b.name);
-        case "type": return dir * a.type.localeCompare(b.type);
-        case "contact": return dir * a.contactPerson.localeCompare(b.contactPerson);
-        case "referrals": return dir * (a.referredLeadIds.length - b.referredLeadIds.length);
+        case "name": return dir * (a.name || "").localeCompare(b.name || "");
+        case "type": return dir * (a.type || "").localeCompare(b.type || "");
+        case "contact": return dir * (a.contactPerson || "").localeCompare(b.contactPerson || "");
+        case "referrals": return dir * ((a.referredLeadIds || []).length - (b.referredLeadIds || []).length);
         default: return 0;
       }
     });
@@ -65,8 +65,8 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   const allReferredLeads = useMemo(() => {
     const result = [];
     localReferrers.forEach(r => {
-      const perLead = Math.round(r.serviceHoursRequested / Math.max(r.referredLeadIds.length, 1));
-      r.referredLeadIds.forEach(id => {
+      const perLead = Math.round(r.serviceHoursRequested / Math.max((r.referredLeadIds || []).length, 1));
+      (r.referredLeadIds || []).forEach(id => {
         const lead = leads.find(l => l.id === id);
         if (lead) {
           result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: editingHours[`${r.id}-${lead.id}`] ?? perLead, partnerName: r.name, partnerId: r.id });
@@ -132,7 +132,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                 >
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
-                    <span className="font-display font-semibold text-foreground text-sm">{r.referredLeadIds.length} <span className="text-[10px] text-muted-foreground font-normal">refs</span></span>
+                    <span className="font-display font-semibold text-foreground text-sm">{(r.referredLeadIds || []).length} <span className="text-[10px] text-muted-foreground font-normal">refs</span></span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
                     <span>{r.contactPerson}{r.contactTitle ? ` · ${r.contactTitle}` : ""}</span>
@@ -177,7 +177,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                       <TableCell><span className="text-xs text-muted-foreground">{r.email || "—"}</span></TableCell>
                       <TableCell><span className="text-xs text-muted-foreground">{r.phone || "—"}</span></TableCell>
                       <TableCell className="text-center">
-                        <span className="font-display font-semibold text-foreground">{r.referredLeadIds.length}</span>
+                        <span className="font-display font-semibold text-foreground">{(r.referredLeadIds || []).length}</span>
                       </TableCell>
                       <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
                     </TableRow>
@@ -316,6 +316,11 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
           onLeadClick={(lead) => { setSelectedReferrer(null); setSelectedLead(lead); }}
           allLeads={leads}
           allReferrers={localReferrers}
+          onUpdateNotes={async (notes) => {
+            await updateReferrer(selectedReferrer.id, { notes });
+            setReferrers(prev => prev.map(r => r.id === selectedReferrer.id ? { ...r, notes } : r));
+            setSelectedReferrer(prev => ({ ...prev, notes }));
+          }}
         />
       )}
 
@@ -376,7 +381,7 @@ const scoreOrder = { hot: 0, warm: 1, nurture: 2, cold: 3 };
 const stageOrder = { inquiry: 0, assessment_scheduled: 1, assessment_completed: 2, proposal_sent: 3, pending_decision: 4, closed: 5 };
 const scoreColors = { hot: "bg-red-500", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-400" };
 
-function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [], allReferrers = [] }) {
+function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [], allReferrers = [], onUpdateNotes }) {
   // Find all referrers in the same organization
   const orgName = referrer.organization || referrer.name;
   const orgReferrers = useMemo(() => {
@@ -399,7 +404,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
   // All leads for this org
   const allOrgLeads = useMemo(() => {
     const leadIds = new Set();
-    orgReferrers.forEach(r => r.referredLeadIds.forEach(id => leadIds.add(id)));
+    orgReferrers.forEach(r => (r.referredLeadIds || []).forEach(id => leadIds.add(id)));
     return allLeads.filter(l => leadIds.has(l.id));
   }, [orgReferrers, allLeads]);
 
@@ -423,7 +428,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
   const referrerLeadsMap = useMemo(() => {
     const map = {};
     orgReferrers.forEach(r => {
-      const leads = allLeads.filter(l => r.referredLeadIds.includes(l.id));
+      const leads = allLeads.filter(l => (r.referredLeadIds || []).includes(l.id));
       map[r.id] = leads;
     });
     return map;
@@ -527,6 +532,9 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                     <p className="text-sm font-semibold text-foreground">{orgName}</p>
                   </div>
                   <p className="text-[11px] text-muted-foreground">{referrer.type} &middot; {contactPersons.length} contact{contactPersons.length !== 1 ? "s" : ""}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {orgStats.total} referral{orgStats.total !== 1 ? "s" : ""} &middot; {orgStats.conversionRate}% conversion &middot; {orgStats.totalHours}h total
+                  </p>
                 </div>
 
                 {/* Connector: Org → Contact Persons */}
@@ -565,7 +573,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                           </p>
                           {cpLeads.length > 0 && (
                             <p className="text-[10px] text-muted-foreground">
-                              Conversion: {cpStat.conversionRate}%
+                              Conversion: {cpStat.conversionRate}% &middot; {cpStat.totalHours}h
                             </p>
                           )}
                         </div>
@@ -597,8 +605,8 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                                     onClick={() => onLeadClick(lead)}
                                   >
                                     <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
-                                    <Badge variant="secondary" className="text-[10px] mb-1">{lead.careLevel}</Badge>
                                     <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
+                                    {lead.hoursPerDay && <p className="text-[10px] text-muted-foreground mt-0.5">{lead.hoursPerDay}</p>}
                                   </div>
                                 </div>
                               ))}
@@ -619,26 +627,6 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                 <TrendingUp className="h-4 w-4" /> Referral Analytics
               </h4>
-
-              {/* Per-contact-person stats */}
-              {contactPersons.length > 0 && (
-                <div className="space-y-1.5 mb-3">
-                  {contactPersons.map(name => {
-                    const s = contactPersonStats[name];
-                    if (!s) return null;
-                    return (
-                      <div key={name} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-xs">
-                        <span className="font-medium text-foreground">{name}</span>
-                        <div className="flex items-center gap-4 text-muted-foreground">
-                          <span>{s.count} referral{s.count !== 1 ? "s" : ""}</span>
-                          <span>{s.conversionRate}% conversion</span>
-                          <span>{s.totalHours}h total</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
 
               {/* Overall org summary */}
               <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5 text-xs space-y-1">
@@ -670,13 +658,71 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
             </div>
           )}
 
-          <div className="rounded-lg bg-muted/30 border border-border p-3">
-            <p className="text-xs font-medium text-foreground mb-1">Notes</p>
-            <p className="text-xs text-muted-foreground">{referrer.notes}</p>
-          </div>
+          <InlineNotes value={referrer.notes} onSave={onUpdateNotes} />
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InlineNotes({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const textareaRef = useRef(null);
+  const saving = useRef(false);
+
+  const start = () => { setDraft(value || ""); saving.current = false; setEditing(true); };
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      const el = textareaRef.current;
+      el.focus();
+      el.selectionStart = el.selectionEnd = el.value.length;
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  }, [editing]);
+
+  const commit = () => {
+    if (saving.current) return;
+    saving.current = true;
+    const trimmed = draft.trim();
+    onSave(trimmed);
+    setEditing(false);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); textareaRef.current?.blur(); }
+    if (e.key === "Escape") { saving.current = true; setEditing(false); }
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+        Notes:
+        {!editing && <Pencil className="h-3 w-3 text-muted-foreground/50" />}
+      </p>
+      {editing ? (
+        <div className="rounded-md bg-muted/40 border border-dashed border-muted-foreground/25 px-2 py-1">
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+            onBlur={commit}
+            onKeyDown={handleKey}
+            className="w-full text-sm text-foreground leading-relaxed bg-transparent border-none outline-none resize-none ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
+            rows={2}
+          />
+        </div>
+      ) : (
+        <p
+          onClick={start}
+          className="text-sm text-muted-foreground leading-relaxed cursor-text rounded-md px-2 -mx-0.5 py-1 hover:bg-muted/40 min-h-[2.5rem] whitespace-pre-wrap"
+        >
+          {value || <span className="italic text-muted-foreground/40">Click to add...</span>}
+        </p>
+      )}
+    </div>
   );
 }
 

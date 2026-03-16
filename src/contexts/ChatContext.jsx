@@ -49,7 +49,7 @@ export function ChatProvider({ leads, referrers, children }) {
   const contextRef = useRef({ leads: leadsContext, referrers: referrersContext });
   contextRef.current = { leads: leadsContext, referrers: referrersContext };
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: () => ({ leadsContext: contextRef.current.leads, referrersContext: contextRef.current.referrers }),
@@ -67,6 +67,7 @@ export function ChatProvider({ leads, referrers, children }) {
       value={{
         messages,
         sendMessage,
+        stop,
         status,
         error,
         input,

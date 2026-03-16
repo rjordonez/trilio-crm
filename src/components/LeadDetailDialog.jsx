@@ -384,8 +384,10 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
       .catch((err) => console.error('Failed to fetch activity logs:', err));
   }, [lead?.id]);
 
-  // Merge: local (unsaved optimistic) + db (persisted) + mock generated
-  const interactions = lead ? [...localInteractions, ...dbInteractions, ...lead.interactions] : [];
+  // Merge: local (unsaved optimistic) + db (persisted) + mock generated, oldest first
+  const interactions = lead
+    ? [...localInteractions, ...dbInteractions, ...lead.interactions].sort((a, b) => new Date(a.date) - new Date(b.date))
+    : [];
 
   if (!lead) return null;
 
@@ -411,7 +413,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
   const currentScore = localScore || lead?.score || "cold";
 
   const handleAddNote = (note) => {
-    setLocalInteractions((prev) => [note, ...prev]);
+    setLocalInteractions((prev) => [...prev, note]);
     createActivityLog({
       leadId: lead.id,
       type: note.type,
@@ -496,7 +498,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
                   lead.rejectedReason = rejectReason || "";
                   const rejectionNote = {
                     id: `note-${Date.now()}`,
-                    date: new Date().toISOString().split("T")[0],
+                    date: new Date().toISOString(),
                     type: "note",
                     title: "Lead Rejected",
                     description: rejectReason || "No reason provided",

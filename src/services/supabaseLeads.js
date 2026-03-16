@@ -51,9 +51,20 @@ export async function createLeadsBulk(leadsArray) {
 export async function updateLead(id, leadData) {
   const { id: _id, ...rest } = leadData;
 
+  // Fetch existing data first to merge, so partial updates don't wipe the JSONB column
+  const { data: existing, error: fetchErr } = await supabase
+    .from('leads')
+    .select('data')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+
+  const merged = { ...(existing.data || {}), ...rest };
+
   const { data, error } = await supabase
     .from('leads')
-    .update({ data: rest })
+    .update({ data: merged })
     .eq('id', id)
     .select()
     .single();

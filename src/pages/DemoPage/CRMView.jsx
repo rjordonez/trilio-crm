@@ -16,22 +16,32 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Users, Handshake, LayoutGrid, Bot } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
+import { useAuth } from "@/contexts/AuthContext";
 import '../../crm.css';
 
 const queryClient = new QueryClient();
 
 function CRMView() {
+  const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState('leads');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [leads, setLeads] = useState([]);
   const [referrers, setReferrers] = useState([]);
   const [autoOpenLeadId, setAutoOpenLeadId] = useState(null);
+  const [dataLoading, setDataLoading] = useState(true);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetchLeads().then(setLeads).catch(console.error);
-    fetchReferrers().then(setReferrers).catch(console.error);
-  }, []);
+    if (!user) return;
+    setDataLoading(true);
+    Promise.all([fetchLeads(), fetchReferrers()])
+      .then(([fetchedLeads, fetchedReferrers]) => {
+        setLeads(fetchedLeads);
+        setReferrers(fetchedReferrers);
+      })
+      .catch(console.error)
+      .finally(() => setDataLoading(false));
+  }, [user?.id]);
 
   const handleAddLead = useCallback(async (lead, { autoOpen } = {}) => {
     try {
@@ -107,7 +117,13 @@ function CRMView() {
               />
             )}
             <main className={`flex-1 overflow-auto ${isMobile ? "pb-16" : ""}`}>
-              {renderPage()}
+              {dataLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : (
+                renderPage()
+              )}
             </main>
             {isMobile && (
               <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border bg-card py-2">

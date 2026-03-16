@@ -51,9 +51,20 @@ export async function createReferrersBulk(referrersArray) {
 export async function updateReferrer(id, referrerData) {
   const { id: _id, ...rest } = referrerData;
 
+  // Fetch existing data first to merge, so partial updates don't wipe the JSONB column
+  const { data: existing, error: fetchErr } = await supabase
+    .from('referrers')
+    .select('data')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+
+  const merged = { ...(existing.data || {}), ...rest };
+
   const { data, error } = await supabase
     .from('referrers')
-    .update({ data: rest })
+    .update({ data: merged })
     .eq('id', id)
     .select()
     .single();

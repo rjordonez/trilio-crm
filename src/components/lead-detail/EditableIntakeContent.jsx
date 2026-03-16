@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Separator } from "@/components/ui/separator";
+import { Pencil, ChevronDown } from "lucide-react";
 
 const placeholders = new Set([
   "No notes provided", "To be assessed", "Budget to be discussed",
@@ -41,8 +42,8 @@ function InlineField({ label, value, onSave }) {
   };
 
   return (
-    <div className="min-w-0">
-      <span className="text-xs font-medium text-muted-foreground">{label}:</span>
+    <div className="min-w-0 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+      <span className="text-xs font-medium text-muted-foreground shrink-0">{label}:</span>
       {editing ? (
         <input
           ref={inputRef}
@@ -50,18 +51,19 @@ function InlineField({ label, value, onSave }) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKey}
-          className="ml-1.5 text-sm text-foreground bg-transparent border-b border-primary outline-none w-[calc(100%-80px)]"
+          className="text-sm text-foreground bg-transparent border-b border-primary outline-none flex-1 min-w-[100px]"
         />
       ) : (
         <span
           onClick={start}
-          className="ml-1.5 text-sm cursor-text hover:bg-muted/40 rounded px-0.5 -mx-0.5 py-0.5"
+          className="text-sm cursor-text hover:bg-muted/40 rounded px-0.5 py-0.5 inline-flex items-center gap-1 min-w-0"
         >
           {value ? (
-            <span className="text-foreground">{value}</span>
+            <span className="text-foreground break-all">{value}</span>
           ) : (
             <span className="text-muted-foreground/40 italic">Click to add...</span>
           )}
+          <Pencil className="h-3 w-3 text-muted-foreground/50 shrink-0" />
         </span>
       )}
     </div>
@@ -108,7 +110,10 @@ function InlineMultiLine({ label, value, onSave, sectionType = "list" }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-foreground mb-1">{label}:</p>
+      <p className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+        {label}:
+        {!editing && <Pencil className="h-3 w-3 text-muted-foreground/50" />}
+      </p>
       {editing ? (
         <div className="rounded-md bg-muted/40 border border-dashed border-muted-foreground/25 px-2 py-1">
           <textarea
@@ -128,6 +133,61 @@ function InlineMultiLine({ label, value, onSave, sectionType = "list" }) {
         >
           {value || <span className="italic text-muted-foreground/40">Click to add...</span>}
         </p>
+      )}
+    </div>
+  );
+}
+
+/* ── Inline select dropdown field ── */
+function InlineSelect({ label, value, options, onSave }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="min-w-0 relative" ref={ref}>
+      <span className="text-xs font-medium text-muted-foreground">{label}:</span>
+      <span
+        onClick={() => setOpen(!open)}
+        className="ml-1.5 text-sm cursor-pointer hover:bg-muted/40 rounded px-0.5 py-0.5 inline-flex items-center gap-1"
+      >
+        {value ? (
+          <span className="text-foreground">{value}</span>
+        ) : (
+          <span className="text-muted-foreground/40 italic">Select...</span>
+        )}
+        <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+      </span>
+      {open && (
+        <div className="absolute z-50 mt-1 left-0 w-56 max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-md">
+          {options.length === 0 && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">No options</p>
+          )}
+          {value && (
+            <button
+              onClick={() => { onSave(""); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            >
+              Clear
+            </button>
+          )}
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onSave(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-muted transition-colors ${opt.value === value ? "bg-muted font-medium" : ""}`}
+            >
+              <span className="text-foreground">{opt.label}</span>
+              {opt.sub && <span className="block text-[10px] text-muted-foreground">{opt.sub}</span>}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -197,7 +257,46 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
     }
   };
 
+  const leadSourceOptions = [
+    { value: "Website", label: "Website" },
+    { value: "Digital Ads", label: "Digital Ads" },
+    { value: "Referral Partner", label: "Referral Partner" },
+    { value: "Existing Client Referral", label: "Existing Client Referral" },
+    { value: "Event", label: "Event" },
+    { value: "Phone Call", label: "Phone Call" },
+    { value: "Walk-in", label: "Walk-in" },
+    { value: "Manual Entry", label: "Manual Entry" },
+    { value: "Other", label: "Other" },
+  ];
+
   const showReferral = isReferral || fields.leadSource.toLowerCase().includes("referral");
+
+  // Build dropdown options from referrers
+  const partnerOptions = useMemo(() => {
+    const seen = new Set();
+    return referrers.filter((r) => {
+      const key = r.organization || r.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map((r) => ({
+      value: r.organization || r.name,
+      label: r.organization || r.name,
+      sub: r.type,
+    }));
+  }, [referrers]);
+
+  // Contact person options based on selected partner
+  const contactOptions = useMemo(() => {
+    if (!fields.referPartner) return [];
+    const names = new Set();
+    referrers.forEach((r) => {
+      if ((r.organization || r.name) !== fields.referPartner) return;
+      if (r.contactPerson) names.add(r.contactPerson);
+      if (r.contacts?.length) r.contacts.forEach((c) => { if (c.name) names.add(c.name); });
+    });
+    return [...names].map((name) => ({ value: name, label: name }));
+  }, [referrers, fields.referPartner]);
 
   return (
     <div className="space-y-5">
@@ -212,11 +311,11 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
           <InlineField label="Email" value={fields.email} onSave={(v) => update("email", v)} />
           <InlineField label="Phone" value={fields.phone} onSave={(v) => update("phone", v)} />
           <InlineField label="Assign To" value={fields.assignTo} onSave={(v) => update("assignTo", v)} />
-          <InlineField label="Lead Source" value={fields.leadSource} onSave={(v) => update("leadSource", v)} />
+          <InlineSelect label="Lead Source" value={fields.leadSource} options={leadSourceOptions} onSave={(v) => update("leadSource", v)} />
           {showReferral && (
             <>
-              <InlineField label="Refer Partner" value={fields.referPartner} onSave={(v) => update("referPartner", v)} />
-              <InlineField label="Referred by" value={fields.referredBy} onSave={(v) => update("referredBy", v)} />
+              <InlineSelect label="Refer Partner" value={fields.referPartner} options={partnerOptions} onSave={(v) => { update("referPartner", v); if (v !== fields.referPartner) update("referredBy", ""); }} />
+              <InlineSelect label="Referred by" value={fields.referredBy} options={contactOptions} onSave={(v) => update("referredBy", v)} />
             </>
           )}
         </div>

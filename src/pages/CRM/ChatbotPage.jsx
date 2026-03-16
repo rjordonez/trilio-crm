@@ -4,12 +4,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Bot, User } from "lucide-react";
+import { Send, Loader2, Bot, User, Square } from "lucide-react";
 import Markdown from "react-markdown";
 
 export default function ChatbotPage() {
   const messagesEndRef = useRef(null);
-  const { messages, sendMessage, status, input, setInput, leadsCount, referrersCount } =
+  const { messages, sendMessage, stop, status, input, setInput, leadsCount, referrersCount } =
     useChatContext();
   const isMobile = useIsMobile();
 
@@ -150,13 +150,15 @@ export default function ChatbotPage() {
                 }
               }}
             />
-            <Button type="submit" disabled={isLoading || !input?.trim()} size="icon" className="h-[60px] w-[60px]">
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
+            {isLoading ? (
+              <Button type="button" onClick={stop} size="icon" className="h-[60px] w-[60px]" variant="destructive">
+                <Square className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button type="submit" disabled={!input?.trim()} size="icon" className="h-[60px] w-[60px]">
                 <Send className="h-4 w-4" />
-              )}
-            </Button>
+              </Button>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Press Enter to send, Shift + Enter for new line
