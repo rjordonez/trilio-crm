@@ -162,8 +162,7 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
     budget: cleanVal(n.budgetFinancial) || lead.budget || "",
     preferences: cleanVal(n.preferences),
     objections: cleanVal(n.objections),
-    notes: cleanVal(n.situationSummary),
-    personalNotes: lead.personalNotes || "",
+    personalNotes: lead.personalNotes || cleanVal(n.situationSummary) || "",
   }));
 
   const update = (key, val) => {
@@ -195,7 +194,6 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
       case "nextSteps": if (n) n.nextStep = Array.isArray(val) ? val : [val]; break;
       case "preferences": if (n) n.preferences = Array.isArray(val) ? val : [val]; break;
       case "objections": if (n) n.objections = Array.isArray(val) ? val : [val]; break;
-      case "notes": if (n) n.situationSummary = Array.isArray(val) ? val : [val]; break;
     }
   };
 
@@ -250,13 +248,8 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
 
       <Separator />
 
-      {/* ── Notes (situation summary) ── */}
-      <InlineMultiLine label="Notes" value={fields.notes} onSave={(v) => updateMulti("notes", v)} />
-
-      <Separator />
-
       {/* ── Personal Notes ── */}
-      <InlineMultiLine label="Personal Notes" value={fields.personalNotes} onSave={(v) => { update("personalNotes", typeof v === "string" ? v : Array.isArray(v) ? v.join(". ") : ""); }} sectionType="single" />
+      <InlineMultiLine label="Personal Notes" value={fields.personalNotes} onSave={(v) => { const text = typeof v === "string" ? v : Array.isArray(v) ? v.join(". ") : ""; update("personalNotes", text); if (n) n.situationSummary = text ? [text] : []; }} sectionType="single" />
     </div>
   );
 }
