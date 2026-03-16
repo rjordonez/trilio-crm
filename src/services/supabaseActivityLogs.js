@@ -42,6 +42,18 @@ export async function createActivityLog(entry) {
   return data;
 }
 
+export async function updateActivityLog(id, updates) {
+  const { data, error } = await supabase
+    .from('activity_logs')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteActivityLog(id) {
   const { error } = await supabase
     .from('activity_logs')

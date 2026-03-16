@@ -136,15 +136,15 @@ export default function Dashboard({ leads = [] }) {
             <h3 className="font-display text-sm font-semibold text-foreground mb-1">Sales Funnel</h3>
             <p className="text-xs text-muted-foreground mb-4">Current pipeline</p>
             {leads.length > 0 ? (
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-1.5 px-4">
                 {funnel.map((stage, i) => {
                   const maxCount = Math.max(...funnel.map((s) => s.count), 1);
-                  const minWidth = 25;
+                  const minWidth = 40;
                   const pct = stage.count > 0 ? minWidth + ((100 - minWidth) * stage.count) / maxCount : minWidth;
                   return (
                     <div
                       key={stage.stage}
-                      className="flex items-center justify-center text-xs font-medium text-primary-foreground rounded transition-all py-2"
+                      className="flex items-center justify-center text-[11px] font-medium text-primary-foreground rounded-md transition-all py-2.5 px-3"
                       style={{
                         width: `${pct}%`,
                         backgroundColor: `hsl(var(--primary) / ${1 - i * 0.12})`,

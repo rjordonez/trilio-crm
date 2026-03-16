@@ -111,7 +111,7 @@ function InlineEditableText({ displayValue, onSave, sectionType }) {
       onClick={startEditing}
       className="pl-6 text-sm text-muted-foreground leading-relaxed cursor-text rounded-md px-1 -mx-1 py-1 hover:bg-muted/40"
     >
-      {displayValue || <span className="italic text-muted-foreground/50">Click to add...</span>}
+      {displayValue || <span className="italic text-muted-foreground/50">Click to edit...</span>}
     </p>
   );
 }
@@ -174,7 +174,7 @@ function InlineEditableInput({ displayValue, onSave, placeholder }) {
       onClick={startEditing}
       className="pl-6 text-sm text-muted-foreground leading-relaxed cursor-text rounded-md px-1 -mx-1 py-1 hover:bg-muted/40"
     >
-      {displayValue || <span className="italic text-muted-foreground/50">{placeholder || "Click to add..."}</span>}
+      {displayValue || <span className="italic text-muted-foreground/50">{placeholder || "Click to edit..."}</span>}
     </p>
   );
 }

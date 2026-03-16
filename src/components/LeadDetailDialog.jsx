@@ -3,13 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock } from "lucide-react";
+import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2 } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
-import { createActivityLog, fetchActivityLogs } from "@/services/supabaseActivityLogs";
+import { createActivityLog, fetchActivityLogs, updateActivityLog, deleteActivityLog } from "@/services/supabaseActivityLogs";
 
 function daysAgoText(dateStr) {
   if (!dateStr) return "—";
@@ -140,7 +140,101 @@ function formatTimelineDate(dateStr) {
   return `${mm}/${dd}/${yy}`;
 }
 
-function TimelineContent({ interactions, onAddNote }) {
+function EditableTimelineEntry({ entry, onUpdate, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [hovering, setHovering] = useState(false);
+  const textareaRef = useRef(null);
+
+  const Icon = interactionIcons[entry.type];
+  const colorClass = interactionColors[entry.type];
+  const isTour = entry.type === "tour" && entry.tourNote;
+
+  const startEditing = () => {
+    setDraft(entry.description || "");
+    setEditing(true);
+  };
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      const el = textareaRef.current;
+      el.focus();
+      el.selectionStart = el.selectionEnd = el.value.length;
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  }, [editing]);
+
+  const commitEdit = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== (entry.description || "")) {
+      onUpdate(entry, { description: trimmed });
+    }
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      textareaRef.current?.blur();
+    }
+    if (e.key === "Escape") setEditing(false);
+  };
+
+  return (
+    <div
+      className="relative flex gap-3 pb-4 group"
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colorClass}`}>
+        <Icon className="h-3.5 w-3.5" />
+      </div>
+      <div className="flex-1 pt-0.5 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-foreground">{entry.title}</span>
+          <span className="text-[10px] text-muted-foreground">{formatTimelineDate(entry.date)}</span>
+          {hovering && (
+            <button
+              onClick={() => onDelete(entry)}
+              className="ml-auto p-0.5 rounded hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+            </button>
+          )}
+        </div>
+        {isTour && (
+          <p className="text-[11px] text-foreground/70 mt-0.5">
+            <span className="font-medium">Attendees:</span> {entry.tourNote.attendees}
+          </p>
+        )}
+        {editing ? (
+          <div className="mt-0.5 rounded-md bg-muted/40 border border-dashed border-muted-foreground/25 px-1 py-1">
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(e) => { setDraft(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              className="w-full text-xs text-foreground leading-relaxed bg-transparent border-none outline-none resize-none ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
+              rows={1}
+            />
+          </div>
+        ) : (
+          <p
+            onClick={startEditing}
+            className="text-xs text-muted-foreground mt-0.5 leading-relaxed cursor-text rounded-md px-1 -mx-1 py-0.5 hover:bg-muted/40"
+          >
+            {entry.description || <span className="italic text-muted-foreground/50">Click to edit...</span>}
+          </p>
+        )}
+        <p className="text-[10px] text-muted-foreground/60 mt-0.5">by {entry.by}</p>
+      </div>
+    </div>
+  );
+}
+
+function TimelineContent({ interactions, onAddNote, onUpdateEntry, onDeleteEntry }) {
   const [addingNote, setAddingNote] = useState(false);
 
   return (
@@ -160,31 +254,14 @@ function TimelineContent({ interactions, onAddNote }) {
       {/* Timeline */}
       <div className="relative space-y-0">
         <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
-        {interactions.map((entry) => {
-          const Icon = interactionIcons[entry.type];
-          const colorClass = interactionColors[entry.type];
-          const isTour = entry.type === "tour" && entry.tourNote;
-          return (
-            <div key={entry.id} className="relative flex gap-3 pb-4">
-              <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colorClass}`}>
-                <Icon className="h-3.5 w-3.5" />
-              </div>
-              <div className="flex-1 pt-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">{entry.title}</span>
-                  <span className="text-[10px] text-muted-foreground">{formatTimelineDate(entry.date)}</span>
-                </div>
-                {isTour && (
-                  <p className="text-[11px] text-foreground/70 mt-0.5">
-                    <span className="font-medium">Attendees:</span> {entry.tourNote.attendees}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{entry.description}</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-0.5">by {entry.by}</p>
-              </div>
-            </div>
-          );
-        })}
+        {interactions.map((entry) => (
+          <EditableTimelineEntry
+            key={entry.id}
+            entry={entry}
+            onUpdate={onUpdateEntry}
+            onDelete={onDeleteEntry}
+          />
+        ))}
       </div>
     </div>
   );
@@ -345,22 +422,41 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
     }).catch((err) => console.error('Failed to save activity log:', err));
   };
 
+  const handleUpdateEntry = (entry, updates) => {
+    // Update in local state
+    setLocalInteractions((prev) => prev.map((e) => e.id === entry.id ? { ...e, ...updates } : e));
+    setDbInteractions((prev) => prev.map((e) => e.id === entry.id ? { ...e, ...updates } : e));
+    // Persist if it has a DB id (numeric)
+    if (typeof entry.id === "number") {
+      updateActivityLog(entry.id, updates).catch((err) => console.error("Failed to update activity log:", err));
+    }
+  };
+
+  const handleDeleteEntry = (entry) => {
+    setLocalInteractions((prev) => prev.filter((e) => e.id !== entry.id));
+    setDbInteractions((prev) => prev.filter((e) => e.id !== entry.id));
+    if (typeof entry.id === "number") {
+      deleteActivityLog(entry.id).catch((err) => console.error("Failed to delete activity log:", err));
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent fullScreen={isMobile} className={isMobile ? "" : "max-w-2xl max-h-[85vh] overflow-y-auto"}>
-        <DialogHeader>
+      <DialogContent fullScreen={isMobile} className={isMobile ? "flex flex-col overflow-hidden" : "max-w-2xl max-h-[85vh] overflow-y-auto"}>
+        <DialogHeader className={isMobile ? "space-y-1 shrink-0" : ""}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-              <Phone className="h-3 w-3" />
-              <span>Lead Detail</span>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                <Phone className="h-3 w-3" />
+                <span>Lead Detail</span>
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={handleAiSummary}
               disabled={aiLoading}
-              className="flex items-center gap-1.5 text-xs"
+              className={`flex items-center gap-1.5 text-xs mr-6 ${isMobile ? "ml-auto" : ""}`}
             >
               {aiLoading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -370,8 +466,8 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
               AI Summary
             </Button>
           </div>
-          <DialogTitle className="text-xl font-bold text-foreground">{lead.name}</DialogTitle>
-          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+          <DialogTitle className={`font-bold text-foreground ${isMobile ? "text-lg" : "text-xl"}`}>{lead.name}</DialogTitle>
+          <div className={`flex items-center gap-3 text-xs text-muted-foreground ${isMobile ? "flex-wrap gap-2" : "mt-1"}`}>
             <button
               onClick={() => onCall?.(lead)}
               className="flex items-center gap-1 hover:text-primary transition-colors"
@@ -388,7 +484,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
               <Clock className="h-3 w-3" />{daysAgoText(lead.lastContactDate)}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
             <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
             <EditableStageBadge
@@ -416,7 +512,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
         {/* AI Summary */}
         {(aiLoading || aiSummary) && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+          <div className={`rounded-lg border border-primary/20 bg-primary/5 shrink-0 ${isMobile ? "p-3" : "p-4"}`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -447,16 +543,17 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </div>
         )}
 
-        <Tabs defaultValue="intake" className="mt-2">
-          <TabsList className="w-full grid grid-cols-2">
+        <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
+          <TabsList className="w-full grid grid-cols-2 shrink-0">
             <TabsTrigger value="intake">☎️ Intake</TabsTrigger>
             <TabsTrigger value="timeline">📋 Activity Log</TabsTrigger>
           </TabsList>
-          <TabsContent value="intake" className="mt-4">
+          <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
+            <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
             <EditableIntakeContent lead={lead} />
           </TabsContent>
-          <TabsContent value="timeline" className="mt-4">
-            <TimelineContent interactions={interactions} onAddNote={handleAddNote} />
+          <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
+            <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />
           </TabsContent>
         </Tabs>
       </DialogContent>

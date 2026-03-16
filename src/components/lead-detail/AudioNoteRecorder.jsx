@@ -206,7 +206,7 @@ export default function AudioNoteRecorder({ onAddNote, onCancel }) {
           onClick={recording ? stopRecording : startRecording}
         >
           {recording ? <Square className="h-3.5 w-3.5 mr-1.5" /> : <Mic className="h-3.5 w-3.5 mr-1.5" />}
-          {recording ? "Stop" : "Start Recording"}
+          {recording ? "Stop" : "Record"}
         </Button>
         {recording && <span className="text-sm text-destructive animate-pulse">Recording...</span>}
         {!recording && (

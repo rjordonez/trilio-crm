@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { useChatContext } from "@/contexts/ChatContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +11,7 @@ export default function ChatbotPage() {
   const messagesEndRef = useRef(null);
   const { messages, sendMessage, status, input, setInput, leadsCount, referrersCount } =
     useChatContext();
+  const isMobile = useIsMobile();
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -31,38 +33,43 @@ export default function ChatbotPage() {
       <div className="flex-1 overflow-auto p-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.length === 0 && (
-            <div className="text-center py-12">
-              <Bot className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                Welcome to your CRM AI Assistant
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                I have access to all {leadsCount} leads and {referrersCount} referral partners. Ask me anything!
+            <div className={`text-center ${isMobile ? "py-6" : "py-12"}`}>
+              <Bot className={`${isMobile ? "h-10 w-10 mb-2" : "h-16 w-16 mb-4"} mx-auto text-muted-foreground`} />
+              {!isMobile && (
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Welcome to your CRM AI Assistant
+                </h3>
+              )}
+              <p className={`text-muted-foreground ${isMobile ? "text-xs mb-3" : "text-sm mb-4"}`}>
+                {isMobile
+                  ? `${leadsCount} leads · ${referrersCount} partners`
+                  : `I have access to all ${leadsCount} leads and ${referrersCount} referral partners. Ask me anything!`
+                }
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mt-6">
+              <div className={`grid gap-2 ${isMobile ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2 gap-3"} max-w-2xl mx-auto`}>
                 <button
                   onClick={() => sendMessage({ text: "Give me a summary of my pipeline" })}
-                  className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
+                  className={`${isMobile ? "p-2 text-xs" : "p-3 text-sm"} text-left border rounded-lg hover:bg-muted transition-colors`}
                 >
-                  Give me a summary of my pipeline
+                  Pipeline summary
                 </button>
                 <button
                   onClick={() => sendMessage({ text: "Which leads need follow-up?" })}
-                  className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
+                  className={`${isMobile ? "p-2 text-xs" : "p-3 text-sm"} text-left border rounded-lg hover:bg-muted transition-colors`}
                 >
-                  Which leads need follow-up?
+                  Needs follow-up
                 </button>
                 <button
                   onClick={() => sendMessage({ text: "Show me my referral partners and their performance" })}
-                  className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
+                  className={`${isMobile ? "p-2 text-xs" : "p-3 text-sm"} text-left border rounded-lg hover:bg-muted transition-colors`}
                 >
-                  Show me my referral partners
+                  Referral partners
                 </button>
                 <button
                   onClick={() => sendMessage({ text: "What are the hot leads I should focus on today?" })}
-                  className="p-3 text-left text-sm border rounded-lg hover:bg-muted transition-colors"
+                  className={`${isMobile ? "p-2 text-xs" : "p-3 text-sm"} text-left border rounded-lg hover:bg-muted transition-colors`}
                 >
-                  What should I focus on today?
+                  Today's priorities
                 </button>
               </div>
             </div>

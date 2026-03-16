@@ -58,8 +58,8 @@ const scoreColors = {
   nurture: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
-const sourceOptions = ["Digital Ads", "Event", "Phone Call", "Referral", "Walk-in", "Website"];
-const careOptions = ["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"];
+const sourceOptions = ["Website", "Digital Ads", "Referral Partner", "Existing Client Referral", "Event", "Other"];
+const careOptions = ["Companion Care", "Personal Care", "Dementia / Alzheimer's", "Post-Hospital Recovery", "24-Hour Care", "Not Sure Yet"];
 const scoreOptions = ["cold", "hot", "nurture", "warm"];
 
 function formatDate(dateStr) {
@@ -535,20 +535,6 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
             <TableIcon className="h-3.5 w-3.5" /> Table
           </button>
         )}
-        {view === "kanban" && !isMobile && (
-          <div className="flex items-center gap-1.5 ml-4">
-            <select
-              value={kanbanCareFilter}
-              onChange={(e) => setKanbanCareFilter(e.target.value)}
-              className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="all">All Care Types</option>
-              {careOptions.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -561,7 +547,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
               <div className="flex gap-3 min-w-max">
                 {stages.map((stage) => {
                   const stageLeads = kanbanLeads.filter((l) =>
-                    l.stage === stage.key && (kanbanCareFilter === "all" || l.careLevel === kanbanCareFilter)
+                    l.stage === stage.key
                   );
                   return (
                     <div key={stage.key} className="w-64 flex-shrink-0">
@@ -692,7 +678,6 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                     </TableHead>
                     <TableHead className="min-w-[120px] whitespace-nowrap">Contact</TableHead>
                     <TableHead className="min-w-[95px] whitespace-nowrap">Inquiry Date</TableHead>
-                    <TableHead className="min-w-[95px] whitespace-nowrap">Initial Contact</TableHead>
                     <TableHead className="min-w-[95px] whitespace-nowrap">Last Contacted</TableHead>
                     <TableHead className="min-w-[180px] whitespace-nowrap">Next Activity</TableHead>
                   </TableRow>
@@ -723,7 +708,6 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                         {lead.contactPerson}{lead.contactRelation ? ` (${lead.contactRelation})` : ""}
                       </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(lead.inquiryDate)}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(lead.initialContact)}</TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">{daysAgoText(lead.lastContactDate)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{lead.nextActivity}</TableCell>
                     </TableRow>
