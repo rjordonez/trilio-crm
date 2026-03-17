@@ -21,6 +21,8 @@ const stageLabels = {
   proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed",
 };
 
+const hoursLookup = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
+
 export default function ReferrersPage({ leads = [], referrers = [], setReferrers }) {
   const isMobile = useIsMobile();
   const [selectedReferrer, setSelectedReferrer] = useState(null);
@@ -65,11 +67,11 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
   const allReferredLeads = useMemo(() => {
     const result = [];
     localReferrers.forEach(r => {
-      const perLead = Math.round(r.serviceHoursRequested / Math.max((r.referredLeadIds || []).length, 1));
       (r.referredLeadIds || []).forEach(id => {
         const lead = leads.find(l => l.id === id);
         if (lead) {
-          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: editingHours[`${r.id}-${lead.id}`] ?? perLead, partnerName: r.name, partnerId: r.id });
+          const leadHours = hoursLookup[lead.hoursPerDay] || 0;
+          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: editingHours[`${r.id}-${lead.id}`] ?? leadHours, partnerName: r.name, partnerId: r.id });
         }
       });
     });
@@ -442,8 +444,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     contactPersons.forEach(name => {
       const leads = contactPersonLeadsMap[name] || [];
       const closed = leads.filter(l => l.stage === "closed").length;
-      const hoursMap = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
-      const totalHours = leads.reduce((s, l) => s + (hoursMap[l.hoursPerDay] || 0), 0);
+      const totalHours = leads.reduce((s, l) => s + (hoursLookup[l.hoursPerDay] || 0), 0);
       stats[name] = {
         count: leads.length,
         closed,
@@ -457,8 +458,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
   // Overall org stats
   const orgStats = useMemo(() => {
     const closed = allOrgLeads.filter(l => l.stage === "closed").length;
-    const hoursMap = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
-    const totalHours = allOrgLeads.reduce((s, l) => s + (hoursMap[l.hoursPerDay] || 0), 0);
+    const totalHours = allOrgLeads.reduce((s, l) => s + (hoursLookup[l.hoursPerDay] || 0), 0);
     let topByCount = null, topByHours = null;
     contactPersons.forEach(name => {
       const s = contactPersonStats[name];
@@ -606,7 +606,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                                   >
                                     <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
                                     <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
-                                    {lead.hoursPerDay && <p className="text-[10px] text-muted-foreground mt-0.5">{lead.hoursPerDay}</p>}
+                                    {lead.hoursPerDay && <p className="text-[10px] text-muted-foreground mt-0.5">{hoursLookup[lead.hoursPerDay] || 0}h</p>}
                                   </div>
                                 </div>
                               ))}

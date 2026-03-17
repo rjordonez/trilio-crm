@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
 import { createActivityLog, fetchActivityLogs, updateActivityLog, deleteActivityLog } from "@/services/supabaseActivityLogs";
+import { updateLead } from "@/services/supabaseLeads";
 
 function daysAgoText(dateStr) {
   if (!dateStr) return "—";
@@ -402,6 +403,10 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
   const handleClose = (openState) => {
     if (!openState) {
+      // Persist any inline edits to Supabase
+      if (lead?.id) {
+        updateLead(lead.id, lead).catch((err) => console.error("Failed to save lead:", err));
+      }
       setAiSummary(null);
       setAiLoading(false);
       setLocalScore(null);
