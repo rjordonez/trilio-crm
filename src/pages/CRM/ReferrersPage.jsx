@@ -109,7 +109,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
 
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }} />
+      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }} isMobile={isMobile} />
       <div className={`flex-1 overflow-auto ${isMobile ? "p-4" : "p-6"} space-y-6`}>
 
         {/* Referrer Snapshot */}
@@ -313,7 +313,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
       )}
 
       {/* Lead Detail Dialog */}
-      <LeadDetailDialog lead={selectedLead} open={!!selectedLead} onOpenChange={(open) => { if (!open) setSelectedLead(null); }} />
+      <LeadDetailDialog lead={selectedLead} open={!!selectedLead} onOpenChange={(open) => { if (!open) setSelectedLead(null); }} referrers={localReferrers} setReferrers={setReferrers} />
 
       {/* Add Partner Sheet */}
       <AddPartnerSheet

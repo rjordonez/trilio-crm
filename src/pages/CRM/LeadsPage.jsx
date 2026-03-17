@@ -58,7 +58,7 @@ const scoreColors = {
   nurture: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
-const sourceOptions = ["Website", "Digital Ads", "Referral Partner", "Existing Client Referral", "Event", "Other"];
+const sourceOptions = ["Website", "Digital Ads", "Referral Partner", "Event", "Other"];
 const careOptions = ["Companion Care", "Personal Care", "Dementia / Alzheimer's", "Post-Hospital Recovery", "24-Hour Care", "Not Sure Yet"];
 const scoreOptions = ["cold", "hot", "nurture", "warm"];
 
@@ -251,7 +251,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
   );
 }
 
-export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], onReferrerAdded }) {
+export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded }) {
   const { user } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const isMobile = useIsMobile();
@@ -728,6 +728,8 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onStageChange={handleStageChange}
         isMobile={isMobile}
         referrers={referrers}
+        setLeads={setLeads}
+        setReferrers={setReferrers}
       />
 
       <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} />

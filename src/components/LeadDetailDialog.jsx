@@ -3,14 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2 } from "lucide-react";
+import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AudioNoteRecorder from "@/components/lead-detail/AudioNoteRecorder";
 import EditableIntakeContent from "@/components/lead-detail/EditableIntakeContent";
 import { createActivityLog, fetchActivityLogs, updateActivityLog, deleteActivityLog } from "@/services/supabaseActivityLogs";
-import { updateLead } from "@/services/supabaseLeads";
 
 function daysAgoText(dateStr) {
   if (!dateStr) return "—";
@@ -354,7 +353,8 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange, referrers = [] }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange, referrers = [], setLeads, setReferrers }) {
+  const [saveStatus, setSaveStatus] = useState(null);
   const { user } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const [aiSummary, setAiSummary] = useState(null);
@@ -403,10 +403,6 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
   const handleClose = (openState) => {
     if (!openState) {
-      // Persist any inline edits to Supabase
-      if (lead?.id) {
-        updateLead(lead.id, lead).catch((err) => console.error("Failed to save lead:", err));
-      }
       setAiSummary(null);
       setAiLoading(false);
       setLocalScore(null);
@@ -473,7 +469,12 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
               AI Summary
             </Button>
           </div>
-          <DialogTitle className={`font-bold text-foreground ${isMobile ? "text-lg" : "text-xl"}`}>{lead.name}</DialogTitle>
+          <DialogTitle className={`font-bold text-foreground ${isMobile ? "text-lg" : "text-xl"} flex items-center gap-2`}>
+            {lead.name}
+            {saveStatus === "saving" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            {saveStatus === "saved" && <span className="text-[11px] font-normal text-primary flex items-center gap-1"><Check className="h-3 w-3" />Saved</span>}
+            {saveStatus === "error" && <span className="text-[11px] font-normal text-destructive">Save failed</span>}
+          </DialogTitle>
           <div className={`flex items-center gap-3 text-xs text-muted-foreground ${isMobile ? "flex-wrap gap-2" : "mt-1"}`}>
             <button
               onClick={() => onCall?.(lead)}
@@ -557,7 +558,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </TabsList>
           <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
-            <EditableIntakeContent lead={lead} referrers={referrers} />
+            <EditableIntakeContent lead={lead} referrers={referrers} setLeads={setLeads} setReferrers={setReferrers} onSaveStatusChange={setSaveStatus} />
           </TabsContent>
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />

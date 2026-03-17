@@ -285,7 +285,6 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
               <SelectItem value="Website">Website</SelectItem>
               <SelectItem value="Digital Ads">Digital Ads</SelectItem>
               <SelectItem value="Referral Partner">Referral Partner</SelectItem>
-              <SelectItem value="Existing Client Referral">Existing Client Referral</SelectItem>
               <SelectItem value="Event">Event</SelectItem>
               <SelectItem value="Other">Other</SelectItem>
             </SelectContent>

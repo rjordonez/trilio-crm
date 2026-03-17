@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Pencil, ChevronDown } from "lucide-react";
+import { updateLead } from "@/services/supabaseLeads";
+import { updateReferrer } from "@/services/supabaseReferrers";
 
 const placeholders = new Set([
   "No notes provided", "To be assessed", "Budget to be discussed",
@@ -165,7 +167,7 @@ function InlineSelect({ label, value, options, onSave }) {
         <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />
       </span>
       {open && (
-        <div className="absolute z-50 mt-1 left-0 w-56 max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-md">
+        <div className="absolute z-[100] mt-1 left-0 w-56 max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-md">
           {options.length === 0 && (
             <p className="px-3 py-2 text-xs text-muted-foreground">No options</p>
           )}
@@ -193,7 +195,7 @@ function InlineSelect({ label, value, options, onSave }) {
   );
 }
 
-export default function EditableIntakeContent({ lead, referrers = [] }) {
+export default function EditableIntakeContent({ lead, referrers = [], setLeads, setReferrers, onSaveStatusChange }) {
   const n = lead.intakeNote || {};
 
   // Find linked referrer
@@ -203,8 +205,46 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
 
   const isReferral = (n.leadSource || lead.source || "").toLowerCase().includes("referral");
 
+  const saveTimerRef = useRef(null);
+  const clearStatusRef = useRef(null);
+  const setStatus = useCallback((s) => { if (onSaveStatusChange) onSaveStatusChange(s); }, [onSaveStatusChange]);
+
+  const persistLead = useCallback(() => {
+    if (!lead?.id) return;
+    setStatus("saving");
+    // Update parent state immediately so other pages reflect changes
+    if (setLeads) {
+      setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...lead } : l));
+    }
+    updateLead(lead.id, lead)
+      .then(() => {
+        setStatus("saved");
+        if (clearStatusRef.current) clearTimeout(clearStatusRef.current);
+        clearStatusRef.current = setTimeout(() => setStatus(null), 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to save lead:", err);
+        setStatus("error");
+        if (clearStatusRef.current) clearTimeout(clearStatusRef.current);
+        clearStatusRef.current = setTimeout(() => setStatus(null), 3000);
+      });
+  }, [lead, setLeads, setStatus]);
+
+  const debouncedSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(persistLead, 600);
+  }, [persistLead]);
+
+  // Cleanup timers
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (clearStatusRef.current) clearTimeout(clearStatusRef.current);
+    };
+  }, []);
+
   // State for all fields
-  const [fields, setFields] = useState(() => ({
+  const buildFields = () => ({
     age: lead.age || "",
     zipcode: n.zipcode || "",
     contactPerson: lead.contactPerson || n.caller || "",
@@ -223,7 +263,15 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
     preferences: cleanVal(n.preferences),
     objections: cleanVal(n.objections),
     personalNotes: lead.personalNotes || cleanVal(n.situationSummary) || "",
-  }));
+  });
+
+  const [fields, setFields] = useState(buildFields);
+
+  // Re-initialize when a different lead is opened
+  useEffect(() => {
+    setFields(buildFields());
+    setStatus(null);
+  }, [lead?.id]);
 
   const update = (key, val) => {
     setFields((prev) => ({ ...prev, [key]: val }));
@@ -237,7 +285,31 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
       case "phone": lead.contactPhone = val; break;
       case "assignTo": if (n) n.salesRep = val; lead.salesRep = val; break;
       case "leadSource": if (n) n.leadSource = val; lead.source = val; break;
-      case "referPartner": lead.referPartner = val; break;
+      case "referPartner": {
+        const oldPartnerName = lead.referPartner;
+        lead.referPartner = val;
+        // Move lead ID between referrers' referredLeadIds
+        if (setReferrers && lead.id) {
+          setReferrers((prev) => prev.map((r) => {
+            const rName = r.organization || r.name;
+            const ids = [...(r.referredLeadIds || [])];
+            if (rName === oldPartnerName && ids.includes(lead.id)) {
+              // Remove from old
+              const updated = { ...r, referredLeadIds: ids.filter((id) => id !== lead.id) };
+              updateReferrer(r.id, updated).catch(console.error);
+              return updated;
+            }
+            if (rName === val && !ids.includes(lead.id)) {
+              // Add to new
+              const updated = { ...r, referredLeadIds: [...ids, lead.id] };
+              updateReferrer(r.id, updated).catch(console.error);
+              return updated;
+            }
+            return r;
+          }));
+        }
+        break;
+      }
       case "referredBy": lead.referredBy = val; break;
       case "careType": lead.careLevel = val; break;
       case "hoursPerDay": lead.hoursPerDay = val; break;
@@ -245,6 +317,7 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
       case "budget": if (n) n.budgetFinancial = Array.isArray(val) ? val : [val]; lead.budget = Array.isArray(val) ? val.join(". ") : val; break;
       case "personalNotes": lead.personalNotes = val; break;
     }
+    debouncedSave();
   };
 
   const updateMulti = (key, val) => {
@@ -255,13 +328,13 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
       case "preferences": if (n) n.preferences = Array.isArray(val) ? val : [val]; break;
       case "objections": if (n) n.objections = Array.isArray(val) ? val : [val]; break;
     }
+    debouncedSave();
   };
 
   const leadSourceOptions = [
     { value: "Website", label: "Website" },
     { value: "Digital Ads", label: "Digital Ads" },
     { value: "Referral Partner", label: "Referral Partner" },
-    { value: "Existing Client Referral", label: "Existing Client Referral" },
     { value: "Event", label: "Event" },
     { value: "Phone Call", label: "Phone Call" },
     { value: "Walk-in", label: "Walk-in" },
@@ -269,7 +342,7 @@ export default function EditableIntakeContent({ lead, referrers = [] }) {
     { value: "Other", label: "Other" },
   ];
 
-  const showReferral = isReferral || fields.leadSource.toLowerCase().includes("referral");
+  const showReferral = fields.leadSource === "Referral Partner";
 
   // Build dropdown options from referrers
   const partnerOptions = useMemo(() => {
