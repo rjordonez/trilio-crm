@@ -90,7 +90,7 @@ function CRMView() {
           />
         );
       case 'referrers':
-        return <ReferrersPage leads={leads} referrers={referrers} setReferrers={setReferrers} />;
+        return <ReferrersPage leads={leads} setLeads={setLeads} referrers={referrers} setReferrers={setReferrers} />;
       case 'tours':
         return <ToursPage />;
       case 'follow-up':

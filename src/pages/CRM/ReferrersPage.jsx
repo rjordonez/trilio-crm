@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import TopBar from "@/components/TopBar";
 import { createReferrer, updateReferrer } from "@/services/supabaseReferrers";
+import { updateLead } from "@/services/supabaseLeads";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -23,7 +23,7 @@ const stageLabels = {
 
 const hoursLookup = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
 
-export default function ReferrersPage({ leads = [], referrers = [], setReferrers }) {
+export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers }) {
   const isMobile = useIsMobile();
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
@@ -70,13 +70,13 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
       (r.referredLeadIds || []).forEach(id => {
         const lead = leads.find(l => l.id === id);
         if (lead) {
-          const leadHours = hoursLookup[lead.hoursPerDay] || 0;
-          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: editingHours[`${r.id}-${lead.id}`] ?? leadHours, partnerName: r.name, partnerId: r.id });
+          const leadHours = lead.serviceHours != null ? lead.serviceHours : (hoursLookup[lead.hoursPerDay] || 0);
+          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: leadHours, partnerName: r.name, partnerId: r.id });
         }
       });
     });
     return result;
-  }, [editingHours, localReferrers, leads]);
+  }, [localReferrers, leads]);
 
   // Filter options
   const uniquePartners = [...new Set(allReferredLeads.map(l => l.partnerName))];
@@ -270,11 +270,18 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                       <Badge variant="secondary" className="text-[11px]">{lead.careLevel}</Badge>
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                      <Input
-                        type="number"
-                        className="w-16 h-7 text-center text-sm mx-auto"
+                      <EditableHoursCell
                         value={editingHours[lead.rowKey] ?? lead.hours}
-                        onChange={(e) => setEditingHours(prev => ({ ...prev, [lead.rowKey]: parseInt(e.target.value) || 0 }))}
+                        onChange={(val) => setEditingHours(prev => ({ ...prev, [lead.rowKey]: val }))}
+                        onSave={(val) => {
+                          if (val !== lead.hours) {
+                            lead.serviceHours = val;
+                            updateLead(lead.id, { serviceHours: val }).catch(console.error);
+                            if (setLeads) {
+                              setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, serviceHours: val } : l));
+                            }
+                          }
+                        }}
                       />
                     </TableCell>
                   </TableRow>
@@ -365,6 +372,45 @@ function SnapshotKPI({ icon: Icon, label, value, prev, current }) {
   );
 }
 
+function EditableHoursCell({ value, onChange, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="number"
+        className="w-14 h-6 text-center text-sm rounded border border-primary bg-background outline-none mx-auto block"
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+        onBlur={() => { setEditing(false); onSave(value); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.target.blur(); }
+          if (e.key === "Escape") { setEditing(false); }
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      className="inline-flex items-center justify-center gap-1 cursor-pointer hover:bg-muted/40 rounded px-2 py-0.5 transition-colors"
+    >
+      <span className="font-display font-semibold text-foreground">{value}h</span>
+      <Pencil className="h-2.5 w-2.5 text-muted-foreground/40" />
+    </span>
+  );
+}
+
 const scoreOrder = { hot: 0, warm: 1, nurture: 2, cold: 3 };
 const stageOrder = { inquiry: 0, assessment_scheduled: 1, assessment_completed: 2, proposal_sent: 3, pending_decision: 4, closed: 5 };
 const scoreColors = { hot: "bg-red-500", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-400" };
@@ -430,7 +476,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     contactPersons.forEach(name => {
       const leads = contactPersonLeadsMap[name] || [];
       const closed = leads.filter(l => l.stage === "closed").length;
-      const totalHours = leads.reduce((s, l) => s + (hoursLookup[l.hoursPerDay] || 0), 0);
+      const totalHours = leads.reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
       stats[name] = {
         count: leads.length,
         closed,
@@ -444,7 +490,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
   // Overall org stats
   const orgStats = useMemo(() => {
     const closed = allOrgLeads.filter(l => l.stage === "closed").length;
-    const totalHours = allOrgLeads.reduce((s, l) => s + (hoursLookup[l.hoursPerDay] || 0), 0);
+    const totalHours = allOrgLeads.reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
     let topByCount = null, topByHours = null;
     contactPersons.forEach(name => {
       const s = contactPersonStats[name];
@@ -592,7 +638,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                                   >
                                     <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
                                     <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
-                                    {lead.hoursPerDay && <p className="text-[10px] text-muted-foreground mt-0.5">{hoursLookup[lead.hoursPerDay] || 0}h</p>}
+                                    <p className="text-[10px] text-muted-foreground mt-0.5">{lead.serviceHours != null ? lead.serviceHours : (hoursLookup[lead.hoursPerDay] || 0)}h</p>
                                   </div>
                                 </div>
                               ))}
