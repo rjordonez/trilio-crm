@@ -25,7 +25,6 @@ import AddLeadDialog from "@/components/AddLeadDialog";
 import ImportCSVDialog from "@/components/ImportCSVDialog";
 import CallDialog from "@/components/CallDialog";
 import EmailComposeDialog from "@/components/EmailComposeDialog";
-import { createLeadsBulk } from "@/services/supabaseLeads";
 
 const stages = [
   { key: "inquiry", label: "Inquiry" },
@@ -737,11 +736,21 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
       <ImportCSVDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        type="leads"
         userName={userName}
-        onImport={async (items) => {
-          const saved = await createLeadsBulk(items);
-          setLeads((prev) => [...prev, ...saved]);
+        existingReferrers={referrers}
+        onComplete={({ newLeads, newReferrers, existingReferrerUpdates }) => {
+          setLeads((prev) => [...prev, ...newLeads]);
+          if (newReferrers.length > 0) {
+            setReferrers((prev) => [...prev, ...newReferrers]);
+          }
+          if (existingReferrerUpdates?.length > 0) {
+            setReferrers((prev) =>
+              prev.map((r) => {
+                const update = existingReferrerUpdates.find((u) => u.id === r.id);
+                return update ? { ...r, referredLeadIds: update.referredLeadIds } : r;
+              })
+            );
+          }
         }}
       />
 

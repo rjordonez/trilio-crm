@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
-import ImportCSVDialog from "@/components/ImportCSVDialog";
 
 const stageLabels = {
   inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed",
@@ -36,7 +35,6 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
   const [filterRep, setFilterRep] = useState("all");
   const [filterCare, setFilterCare] = useState("all");
   const [addPartnerOpen, setAddPartnerOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const localReferrers = referrers;
 
   const totalReferrals = localReferrers.reduce((s, r) => s + (r.referredLeadIds || []).length, 0);
@@ -109,7 +107,7 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
 
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }} isMobile={isMobile} />
+      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} isMobile={isMobile} />
       <div className={`flex-1 overflow-auto ${isMobile ? "p-4" : "p-6"} space-y-6`}>
 
         {/* Referrer Snapshot */}
@@ -337,16 +335,6 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
         }}
       />
 
-      <ImportCSVDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        type="referrers"
-        onImport={async (items) => {
-          const { createReferrersBulk } = await import("@/services/supabaseReferrers");
-          const saved = await createReferrersBulk(items);
-          setReferrers((prev) => [...prev, ...saved]);
-        }}
-      />
     </div>
   );
 }
@@ -425,12 +413,11 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     return [referrer];
   }, [allReferrers, referrer]);
 
-  // Collect all contact person names across the org
+  // Collect all contact person names across the org (each referrer record = one contact)
   const contactPersons = useMemo(() => {
     const names = new Set();
     orgReferrers.forEach(r => {
       if (r.contactPerson) names.add(r.contactPerson);
-      if (r.contacts?.length) r.contacts.forEach(c => { if (c.name) names.add(c.name); });
     });
     return [...names];
   }, [orgReferrers]);
@@ -476,7 +463,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     contactPersons.forEach(name => {
       const leads = contactPersonLeadsMap[name] || [];
       const closed = leads.filter(l => l.stage === "closed").length;
-      const totalHours = leads.reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
+      const totalHours = leads.filter(l => l.stage === "closed").reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
       stats[name] = {
         count: leads.length,
         closed,
@@ -490,7 +477,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
   // Overall org stats
   const orgStats = useMemo(() => {
     const closed = allOrgLeads.filter(l => l.stage === "closed").length;
-    const totalHours = allOrgLeads.reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
+    const totalHours = allOrgLeads.filter(l => l.stage === "closed").reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
     let topByCount = null, topByHours = null;
     contactPersons.forEach(name => {
       const s = contactPersonStats[name];
@@ -523,21 +510,21 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
             <InfoRow icon={Phone} label="Main Phone" value={referrer.phone} />
             <InfoRow icon={Mail} label="Main Email" value={referrer.email} />
           </div>
-          {referrer.contacts && referrer.contacts.length > 0 ? (
+          {orgReferrers.length > 1 ? (
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Users className="h-4 w-4" /> Contacts ({referrer.contacts.length})
+                <Users className="h-4 w-4" /> Contacts ({orgReferrers.length})
               </h4>
               <div className="space-y-2">
-                {referrer.contacts.map((c, i) => (
-                  <div key={i} className="rounded-lg border border-border p-3 flex items-center gap-4">
+                {orgReferrers.map((r) => (
+                  <div key={r.id} className="rounded-lg border border-border p-3 flex items-center gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.role}</p>
+                      <p className="text-sm font-medium text-foreground">{r.contactPerson}</p>
+                      {r.contactTitle && <p className="text-xs text-muted-foreground">{r.contactTitle}</p>}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-                      <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{c.phone}</span>
-                      <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</span>
+                      {r.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
+                      {r.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
                     </div>
                   </div>
                 ))}
@@ -638,7 +625,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                                   >
                                     <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
                                     <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
-                                    <p className="text-[10px] text-muted-foreground mt-0.5">{lead.serviceHours != null ? lead.serviceHours : (hoursLookup[lead.hoursPerDay] || 0)}h</p>
+                                    {lead.stage === "closed" && <p className="text-[10px] text-muted-foreground mt-0.5">{lead.serviceHours != null ? lead.serviceHours : (hoursLookup[lead.hoursPerDay] || 0)}h</p>}
                                   </div>
                                 </div>
                               ))}
