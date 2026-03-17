@@ -86,12 +86,12 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
 
   const filteredLeads = useMemo(() => {
     return allReferredLeads.filter(l =>
+      l.stage === "closed" &&
       (filterPartner === "all" || l.partnerName === filterPartner) &&
-      (filterStage === "all" || l.stage === filterStage) &&
       (filterRep === "all" || l.salesRep === filterRep) &&
       (filterCare === "all" || l.careLevel === filterCare)
     );
-  }, [allReferredLeads, filterPartner, filterStage, filterRep, filterCare]);
+  }, [allReferredLeads, filterPartner, filterRep, filterCare]);
 
   const displayedTotalHours = useMemo(() => {
     const subset = selectedRowKeys.size > 0 ? filteredLeads.filter(l => selectedRowKeys.has(l.rowKey)) : filteredLeads;
@@ -151,9 +151,9 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableHead label="Partner Name" sortKeyVal="name" />
                     <SortableHead label="Primary Contact" sortKeyVal="contact" />
                     <SortableHead label="Type" sortKeyVal="type" />
+                    <SortableHead label="Partner Name" sortKeyVal="name" />
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead className="text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("referrals")}>
@@ -169,13 +169,13 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                   {sorted.map((r) => (
                     <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReferrer(r)}>
                       <TableCell>
-                        <p className="font-medium text-foreground text-sm">{r.name}</p>
-                      </TableCell>
-                      <TableCell>
                         <p className="text-sm text-foreground">{r.contactPerson}</p>
                         {r.contactTitle && <p className="text-xs text-muted-foreground">{r.contactTitle}</p>}
                       </TableCell>
                       <TableCell><span className="text-sm text-muted-foreground">{r.type}</span></TableCell>
+                      <TableCell>
+                        <p className="font-medium text-foreground text-sm">{r.name}</p>
+                      </TableCell>
                       <TableCell><span className="text-xs text-muted-foreground">{r.email || "—"}</span></TableCell>
                       <TableCell><span className="text-xs text-muted-foreground">{r.phone || "—"}</span></TableCell>
                       <TableCell className="text-center">
@@ -194,7 +194,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
         {!isMobile && <div>
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <ExternalLink className="h-4 w-4 text-primary" />
-            Referred Leads ({filteredLeads.length})
+            Closed Leads ({filteredLeads.length})
           </h3>
           <div className="rounded-lg border border-border bg-card shadow-crm-sm">
             <Table>
@@ -218,17 +218,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                       <SelectContent>
                         <SelectItem value="all">All Partners</SelectItem>
                         {uniquePartners.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </TableHead>
-                  <TableHead>
-                    <Select value={filterStage} onValueChange={setFilterStage}>
-                      <SelectTrigger className="h-7 text-xs border-0 bg-transparent shadow-none px-0 w-auto min-w-[70px]">
-                        <SelectValue placeholder="Stage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Stages</SelectItem>
-                        {uniqueStages.map(s => <SelectItem key={s} value={s}>{stageLabels[s]}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </TableHead>
@@ -276,9 +265,6 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
                       <p className="text-sm font-medium text-primary underline underline-offset-2">{lead.name}</p>
                     </TableCell>
                     <TableCell><span className="text-sm text-muted-foreground">{lead.partnerName}</span></TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[11px]">{stageLabels[lead.stage]}</Badge>
-                    </TableCell>
                     <TableCell><span className="text-sm text-foreground">{lead.salesRep}</span></TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-[11px]">{lead.careLevel}</Badge>
@@ -296,7 +282,7 @@ export default function ReferrersPage({ leads = [], referrers = [], setReferrers
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-right text-sm font-semibold text-foreground">
+                  <TableCell colSpan={5} className="text-right text-sm font-semibold text-foreground">
                     Total Hours {selectedRowKeys.size > 0 ? `(${selectedRowKeys.size} selected)` : `(${filteredLeads.length} leads)`}
                   </TableCell>
                   <TableCell className="text-center font-display text-base font-bold text-foreground">
