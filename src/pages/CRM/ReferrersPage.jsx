@@ -23,7 +23,7 @@ const stageLabels = {
 
 const hoursLookup = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
 
-export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers }) {
+export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers, alerts = [] }) {
   const { organization } = useAuth();
   const isMobile = useIsMobile();
   const [selectedReferrer, setSelectedReferrer] = useState(null);
@@ -109,7 +109,7 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
 
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} isMobile={isMobile} />
+      <TopBar title="Referrers" subtitle="Referral Management" action={{ label: "Add Partner", onClick: () => setAddPartnerOpen(true) }} isMobile={isMobile} alerts={alerts} />
       <div className={`flex-1 overflow-auto ${isMobile ? "p-4" : "p-6"} space-y-6`}>
 
         {/* Referrer Snapshot */}

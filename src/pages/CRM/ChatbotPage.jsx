@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Bot, User, Square } from "lucide-react";
 import Markdown from "react-markdown";
 
-export default function ChatbotPage() {
+export default function ChatbotPage({ alerts = [] }) {
   const messagesEndRef = useRef(null);
   const { messages, sendMessage, stop, status, input, setInput, leadsCount, referrersCount } =
     useChatContext();
@@ -28,6 +28,7 @@ export default function ChatbotPage() {
       <TopBar
         title="AI Assistant"
         subtitle="Ask questions about your leads and prospects"
+        alerts={alerts}
       />
 
       <div className="flex-1 overflow-auto p-4">

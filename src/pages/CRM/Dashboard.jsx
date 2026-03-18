@@ -31,7 +31,7 @@ const funnelOrder = [
   "closed",
 ];
 
-export default function Dashboard({ leads = [] }) {
+export default function Dashboard({ leads = [], alerts = [] }) {
   const activeLeads = useMemo(
     () => leads.filter((l) => l.stage && l.stage !== "rejected" && l.stage !== "closed"),
     [leads]
@@ -64,7 +64,7 @@ export default function Dashboard({ leads = [] }) {
 
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Dashboard" subtitle="At a glance overview" />
+      <TopBar title="Dashboard" subtitle="At a glance overview" alerts={alerts} />
       <div className="flex-1 overflow-auto p-6 space-y-6">
         {/* Active Leads metric */}
         <div className="max-w-xs">

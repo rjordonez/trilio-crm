@@ -67,7 +67,7 @@ function formatHour(h) {
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-export default function ToursPage() {
+export default function ToursPage({ alerts = [] }) {
   const [view, setView] = useState("week");
   const [baseDate, setBaseDate] = useState(new Date(2026, 1, 11));
   const [staffFilter, setStaffFilter] = useState("all");
@@ -98,7 +98,7 @@ export default function ToursPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Calendar" subtitle="Team schedule" action={{ label: "Schedule Tour", onClick: () => {} }} />
+      <TopBar title="Calendar" subtitle="Team schedule" action={{ label: "Schedule Tour", onClick: () => {} }} alerts={alerts} />
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-card">

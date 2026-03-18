@@ -17,6 +17,7 @@ import { Users, Handshake, LayoutGrid, Bot } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLeadAlerts } from "@/hooks/useLeadAlerts";
 import '../../crm.css';
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function CRMView() {
   const [dataLoading, setDataLoading] = useState(true);
   const isMobile = useIsMobile();
   const orgId = organization?.id;
+  const alerts = useLeadAlerts(leads);
 
   useEffect(() => {
     if (!user || !orgId) return;
@@ -76,7 +78,7 @@ function CRMView() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard leads={leads} />;
+        return <Dashboard leads={leads} alerts={alerts} />;
       case 'leads':
         return (
           <LeadsPage
@@ -88,18 +90,19 @@ function CRMView() {
             referrers={referrers}
             setReferrers={setReferrers}
             onReferrerAdded={handleReferrerAdded}
+            alerts={alerts}
           />
         );
       case 'referrers':
-        return <ReferrersPage leads={leads} setLeads={setLeads} referrers={referrers} setReferrers={setReferrers} />;
+        return <ReferrersPage leads={leads} setLeads={setLeads} referrers={referrers} setReferrers={setReferrers} alerts={alerts} />;
       case 'tours':
-        return <ToursPage />;
+        return <ToursPage alerts={alerts} />;
       case 'follow-up':
-        return <FollowUpPage />;
+        return <FollowUpPage alerts={alerts} />;
       case 'chatbot':
-        return <ChatbotPage />;
+        return <ChatbotPage alerts={alerts} />;
       default:
-        return <Dashboard leads={leads} />;
+        return <Dashboard leads={leads} alerts={alerts} />;
     }
   };
 

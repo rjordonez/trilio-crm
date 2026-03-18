@@ -201,7 +201,7 @@ function personalizeContent(body, lead) {
   return text;
 }
 
-export default function FollowUpPage() {
+export default function FollowUpPage({ alerts = [] }) {
   const [templates, setTemplates] = useState(defaultTemplates);
   const [campaigns, setCampaigns] = useState(defaultCampaigns);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -326,6 +326,7 @@ export default function FollowUpPage() {
         title="Follow-Up"
         subtitle="Email automation & campaigns"
         action={{ label: "New Campaign", onClick: () => setCampaignOpen(true) }}
+        alerts={alerts}
       />
 
       <div className="flex-1 overflow-auto p-4">

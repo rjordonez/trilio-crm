@@ -252,7 +252,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
   );
 }
 
-export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded }) {
+export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [] }) {
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
@@ -521,6 +521,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         action={{ label: "Add Lead", onClick: () => setAddOpen(true) }}
         secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }}
         isMobile={isMobile}
+        alerts={alerts}
       />
 
       {/* View toggle + search */}
