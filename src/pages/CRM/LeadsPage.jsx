@@ -253,8 +253,9 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
 }
 
 export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded }) {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
+  const orgId = organization?.id;
   const isMobile = useIsMobile();
   const [view, setView] = useState("table");
   const [selectedLead, setSelectedLead] = useState(null);
@@ -324,9 +325,9 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         description: `${stageLabel[sourceStage] || sourceStage} → ${stageLabel[destStage] || destStage}`,
         by: userName,
         date: new Date().toISOString().split("T")[0],
-      }).catch((err) => console.error("Failed to save activity log:", err));
+      }, orgId).catch((err) => console.error("Failed to save activity log:", err));
     }
-  }, [leads, setLeads, userName]);
+  }, [leads, setLeads, userName, orgId]);
 
   const handleStageChange = useCallback((leadId, newStage, rejectReason) => {
     let oldStage = "";
@@ -356,7 +357,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         description: rejectReason || "No reason provided",
         by: userName,
         date: dateStr,
-      }).catch((err) => console.error("Failed to save activity log:", err));
+      }, orgId).catch((err) => console.error("Failed to save activity log:", err));
     } else {
       createActivityLog({
         leadId,
@@ -365,7 +366,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         description: `${oldLabel} → ${newLabel}`,
         by: userName,
         date: dateStr,
-      }).catch((err) => console.error("Failed to save activity log:", err));
+      }, orgId).catch((err) => console.error("Failed to save activity log:", err));
     }
   }, [setLeads, userName]);
 

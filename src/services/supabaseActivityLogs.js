@@ -1,13 +1,12 @@
 import { supabase } from '@/lib/supabase';
 
-export async function fetchActivityLogs(leadId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+export async function fetchActivityLogs(leadId, orgId) {
+  if (!orgId) return [];
 
   let query = supabase
     .from('activity_logs')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('organization_id', orgId)
     .order('date', { ascending: false });
 
   if (leadId) {
@@ -19,7 +18,7 @@ export async function fetchActivityLogs(leadId) {
   return data;
 }
 
-export async function createActivityLog(entry) {
+export async function createActivityLog(entry, orgId) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -27,6 +26,7 @@ export async function createActivityLog(entry) {
     .from('activity_logs')
     .insert({
       user_id: user.id,
+      organization_id: orgId,
       lead_id: entry.leadId,
       type: entry.type,
       title: entry.title,

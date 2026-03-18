@@ -5,6 +5,7 @@ import { Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { createLeadsBulk } from "@/services/supabaseLeads";
 import { createReferrersBulk, updateReferrer } from "@/services/supabaseReferrers";
+import { useAuth } from "@/contexts/AuthContext";
 
 function generateSampleCSV() {
   return `Client Name,Age,Contact Person,Relationship,Phone,Email,Zip Code,Type of Care,Hours Per Day,Timeline,Budget,Lead Source,Referred By,Partner Name,Partner Type,Partner Email,Stage,Notes
@@ -167,6 +168,7 @@ function csvRowToLead(row, userName) {
 }
 
 export default function ImportCSVDialog({ open, onOpenChange, existingReferrers = [], onComplete, userName }) {
+  const { organization } = useAuth();
   const [status, setStatus] = useState("idle"); // idle | preview | importing | done | error
   const [parsed, setParsed] = useState([]);
   const [errorMsg, setErrorMsg] = useState("");
@@ -274,7 +276,7 @@ export default function ImportCSVDialog({ open, onOpenChange, existingReferrers 
       // Phase 2: Create new referrers
       let savedReferrers = [];
       if (referrerMap.size > 0) {
-        savedReferrers = await createReferrersBulk([...referrerMap.values()]);
+        savedReferrers = await createReferrersBulk([...referrerMap.values()], organization?.id);
       }
 
       // Build lookup: contactPerson (lowercase) → referrer ID
@@ -299,7 +301,7 @@ export default function ImportCSVDialog({ open, onOpenChange, existingReferrers 
         return lead;
       });
 
-      const savedLeads = await createLeadsBulk(leadItems);
+      const savedLeads = await createLeadsBulk(leadItems, organization?.id);
 
       // Phase 3: Update referredLeadIds on referrers
       const referrerLeadUpdates = new Map(); // referrerId → [leadId, ...]

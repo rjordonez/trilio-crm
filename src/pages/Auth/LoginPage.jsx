@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [orgCode, setOrgCode] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,11 @@ export default function LoginPage() {
 
     if (isSignUp && !fullName.trim()) {
       setError('Please enter your full name');
+      return;
+    }
+
+    if (isSignUp && !orgCode.trim()) {
+      setError('Please enter your organization code');
       return;
     }
 
@@ -39,7 +45,7 @@ export default function LoginPage() {
     setLoading(true);
 
     if (isSignUp) {
-      const { error } = await signUp(email, password, fullName.trim());
+      const { error } = await signUp(email, password, fullName.trim(), orgCode.trim());
       if (error) {
         setError(error.message);
       } else {
@@ -115,6 +121,20 @@ export default function LoginPage() {
                 placeholder=""
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label htmlFor="orgCode">Organization Code</Label>
+              <Input
+                id="orgCode"
+                type="text"
+                placeholder=""
+                value={orgCode}
+                onChange={(e) => setOrgCode(e.target.value)}
                 required
               />
             </div>

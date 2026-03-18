@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import TopBar from "@/components/TopBar";
 import { createReferrer, updateReferrer } from "@/services/supabaseReferrers";
 import { updateLead } from "@/services/supabaseLeads";
+import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ const stageLabels = {
 const hoursLookup = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
 
 export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers }) {
+  const { organization } = useAuth();
   const isMobile = useIsMobile();
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
@@ -327,7 +329,7 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
         referrers={localReferrers}
         onAdd={async (partner) => {
           try {
-            const saved = await createReferrer(partner);
+            const saved = await createReferrer(partner, organization?.id);
             setReferrers(prev => [...prev, saved]);
           } catch (err) {
             console.error('Failed to create referrer:', err);

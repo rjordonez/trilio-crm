@@ -22,7 +22,7 @@ import '../../crm.css';
 const queryClient = new QueryClient();
 
 function CRMView() {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [currentPage, setCurrentPage] = useState('leads');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [leads, setLeads] = useState([]);
@@ -30,22 +30,23 @@ function CRMView() {
   const [autoOpenLeadId, setAutoOpenLeadId] = useState(null);
   const [dataLoading, setDataLoading] = useState(true);
   const isMobile = useIsMobile();
+  const orgId = organization?.id;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !orgId) return;
     setDataLoading(true);
-    Promise.all([fetchLeads(), fetchReferrers()])
+    Promise.all([fetchLeads(orgId), fetchReferrers(orgId)])
       .then(([fetchedLeads, fetchedReferrers]) => {
         setLeads(fetchedLeads);
         setReferrers(fetchedReferrers);
       })
       .catch(console.error)
       .finally(() => setDataLoading(false));
-  }, [user?.id]);
+  }, [user?.id, orgId]);
 
   const handleAddLead = useCallback(async (lead, { autoOpen } = {}) => {
     try {
-      const saved = await createLead(lead);
+      const saved = await createLead(lead, orgId);
       setLeads((prev) => [...prev, saved]);
       if (autoOpen) {
         setAutoOpenLeadId(saved.id);
@@ -62,7 +63,7 @@ function CRMView() {
     } catch (err) {
       console.error('Failed to create lead:', err);
     }
-  }, [referrers]);
+  }, [referrers, orgId]);
 
   const handleAutoOpenHandled = useCallback(() => {
     setAutoOpenLeadId(null);

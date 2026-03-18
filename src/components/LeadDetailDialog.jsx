@@ -356,8 +356,9 @@ function EditableStageBadge({ stage, onChange }) {
 
 export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange, referrers = [], setLeads, setReferrers }) {
   const [saveStatus, setSaveStatus] = useState(null);
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
+  const orgId = organization?.id;
   const [aiSummary, setAiSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [localInteractions, setLocalInteractions] = useState([]);
@@ -370,7 +371,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
     if (!lead?.id) return;
     setLocalInteractions([]);
     setDbInteractions([]);
-    fetchActivityLogs(lead.id)
+    fetchActivityLogs(lead.id, orgId)
       .then((logs) => {
         const mapped = logs.map((log) => ({
           id: log.id,
@@ -423,7 +424,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
       description: note.description,
       by: note.by,
       date: note.date,
-    }).catch((err) => console.error('Failed to save activity log:', err));
+    }, orgId).catch((err) => console.error('Failed to save activity log:', err));
   };
 
   const handleUpdateEntry = (entry, updates) => {

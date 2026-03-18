@@ -43,7 +43,7 @@ const initialForm = {
 };
 
 export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded }) {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "Unknown";
   const [form, setForm] = useState(initialForm);
   const [addingPartner, setAddingPartner] = useState(false);
@@ -103,7 +103,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         status: "active",
         lastReferralDate: new Date().toISOString().split("T")[0],
       };
-      const saved = await createReferrer(newPartner);
+      const saved = await createReferrer(newPartner, organization?.id);
       onReferrerAdded?.(saved);
       set("referrerId", saved.id);
       set("referPartner", saved.organization || saved.name);

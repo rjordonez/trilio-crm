@@ -1,20 +1,19 @@
 import { supabase } from '@/lib/supabase';
 
-export async function fetchLeads() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+export async function fetchLeads(orgId) {
+  if (!orgId) return [];
 
   const { data, error } = await supabase
     .from('leads')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('organization_id', orgId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
   return data.map((row) => ({ ...row.data, id: row.id }));
 }
 
-export async function createLead(leadData) {
+export async function createLead(leadData, orgId) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -22,7 +21,7 @@ export async function createLead(leadData) {
 
   const { data, error } = await supabase
     .from('leads')
-    .insert({ user_id: user.id, data: rest })
+    .insert({ user_id: user.id, organization_id: orgId, data: rest })
     .select()
     .single();
 
@@ -30,13 +29,13 @@ export async function createLead(leadData) {
   return { ...data.data, id: data.id };
 }
 
-export async function createLeadsBulk(leadsArray) {
+export async function createLeadsBulk(leadsArray, orgId) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
   const rows = leadsArray.map((leadData) => {
     const { id, ...rest } = leadData;
-    return { user_id: user.id, data: rest };
+    return { user_id: user.id, organization_id: orgId, data: rest };
   });
 
   const { data, error } = await supabase
