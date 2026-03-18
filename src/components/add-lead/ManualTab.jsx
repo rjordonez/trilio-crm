@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,10 +42,26 @@ const initialForm = {
   notes: "",
 };
 
-export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded }) {
+export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded, aiPrefill, isProcessing }) {
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "Unknown";
   const [form, setForm] = useState(initialForm);
+
+  // Apply AI prefill when it arrives
+  useEffect(() => {
+    if (aiPrefill) {
+      setForm((prev) => {
+        const merged = { ...prev };
+        Object.keys(aiPrefill).forEach((key) => {
+          const val = aiPrefill[key];
+          if (val !== undefined && val !== null && val !== "" && !(Array.isArray(val) && val.length === 0)) {
+            merged[key] = val;
+          }
+        });
+        return merged;
+      });
+    }
+  }, [aiPrefill]);
   const [addingPartner, setAddingPartner] = useState(false);
   const [partnerForm, setPartnerForm] = useState({
     name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "",
@@ -176,6 +192,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <fieldset disabled={isProcessing} className={`space-y-4 ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}>
       {/* Row 1: Client Name, Age */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -439,7 +456,9 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         <Textarea placeholder="Caregiver preference, family dynamics, decision makers, concerns..." className="text-sm min-h-[80px]" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
       </div>
 
-      <Button type="submit" className="w-full" size="sm">
+      </fieldset>
+
+      <Button type="submit" className="w-full" size="sm" disabled={isProcessing}>
         Add Lead
       </Button>
     </form>
