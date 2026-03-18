@@ -7,6 +7,7 @@ import {
   PanelLeft,
   Sparkles,
   Bot,
+  Settings,
 } from "lucide-react";
 
 const navItems = [
@@ -14,6 +15,10 @@ const navItems = [
   { id: "leads", icon: UserPlus, label: "Leads" },
   { id: "referrers", icon: Handshake, label: "Referrers" },
   { id: "chatbot", icon: Bot, label: "AI Assistant" },
+];
+
+const bottomNavItems = [
+  { id: "settings", icon: Settings, label: "Settings" },
 ];
 
 export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigate }) {
@@ -68,6 +73,27 @@ export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigat
           );
         })}
       </nav>
+
+      {/* Bottom Nav */}
+      <div className="border-t border-sidebar-border px-2 py-2 space-y-0.5">
+        {bottomNavItems.map(({ id, icon: Icon, label }) => {
+          const active = currentPage === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onNavigate(id)}
+              className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              } ${collapsed ? "justify-center" : ""}`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>{label}</span>}
+            </button>
+          );
+        })}
+      </div>
     </aside>
   );
 }

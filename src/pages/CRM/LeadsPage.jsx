@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { updateLead } from "@/services/supabaseLeads";
+import { updateLead, deleteLead } from "@/services/supabaseLeads";
+import { updateReferrer } from "@/services/supabaseReferrers";
 import { createActivityLog } from "@/services/supabaseActivityLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
@@ -19,13 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddLeadDialog from "@/components/AddLeadDialog";
 import ImportCSVDialog from "@/components/ImportCSVDialog";
 import CallDialog from "@/components/CallDialog";
 import EmailComposeDialog from "@/components/EmailComposeDialog";
+import { toast } from "@/hooks/use-toast";
 
 const stages = [
   { key: "inquiry", label: "Inquiry" },
@@ -374,12 +377,35 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Delete lead
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const handleDeleteLead = async (lead) => {
+    try {
+      // If lead has a referrer, remove lead from referrer's referredLeadIds
+      if (lead.referrerId) {
+        const referrer = referrers.find(r => r.id === lead.referrerId);
+        if (referrer) {
+          const updatedIds = (referrer.referredLeadIds || []).filter(id => id !== lead.id);
+          await updateReferrer(referrer.id, { ...referrer, referredLeadIds: updatedIds });
+          setReferrers(prev => prev.map(r => r.id === referrer.id ? { ...r, referredLeadIds: updatedIds } : r));
+        }
+      }
+      await deleteLead(lead.id);
+      setLeads(prev => prev.filter(l => l.id !== lead.id));
+      setDeleteTarget(null);
+      setSelectedLead(null);
+      toast({ title: "Lead deleted", description: `${lead.name} has been permanently deleted.` });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to delete lead", variant: "destructive" });
+    }
+  };
+
   const handleCall = (lead) => {
     setCallTarget({ name: lead.name, phone: lead.contactPhone });
   };
 
   const handleEmail = (lead) => {
-    setEmailTarget({ name: lead.name, email: lead.contactEmail });
+    setEmailTarget(lead);
   };
 
   // --- Mobile Kanban ---
@@ -748,6 +774,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onOpenChange={(open) => !open && setSelectedLead(null)}
         onCall={(lead) => handleCall(lead)}
         onEmail={(lead) => handleEmail(lead)}
+        onDelete={(lead) => setDeleteTarget(lead)}
         onStageChange={handleStageChange}
         isMobile={isMobile}
         referrers={referrers}
@@ -789,7 +816,8 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         open={!!emailTarget}
         onOpenChange={(open) => !open && setEmailTarget(null)}
         name={emailTarget?.name || ""}
-        email={emailTarget?.email || ""}
+        email={emailTarget?.contactEmail || ""}
+        lead={emailTarget}
       />
 
       <StageChangeModal
@@ -839,6 +867,29 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
       {view === "kanban" && !isMobile && (
         <p className="fixed bottom-4 left-1/2 -translate-x-1/2 text-xs text-muted-foreground/60 bg-muted/50 px-4 py-1.5 rounded-full backdrop-blur-sm">Drag and drop prospects to update their pipeline stage</p>
       )}
+
+      {/* Delete lead confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this lead and all their data.
+              {deleteTarget?.referrerId && (
+                <span className="block mt-2 text-foreground font-medium">
+                  This lead was referred by {deleteTarget.referPartner || "a partner"}. The referral link will be removed but the partner will remain.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeleteLead(deleteTarget)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

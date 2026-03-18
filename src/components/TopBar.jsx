@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, Plus, Upload, LogOut, Clock, AlertTriangle } from "lucide-react";
+import { Bell, Plus, Upload, LogOut, Clock, AlertTriangle, Settings, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigation } from "@/contexts/NavigationContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ function NotificationPanel({ alerts, onClose }) {
 
 export default function TopBar({ title, subtitle, action, secondaryAction, isMobile, alerts = [] }) {
   const { signOut, user } = useAuth();
+  const { navigate } = useNavigation();
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
@@ -111,6 +113,20 @@ export default function TopBar({ title, subtitle, action, secondaryAction, isMob
                   <p className="text-sm font-medium">{user?.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => navigate('settings')}
+                  className="cursor-pointer"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('integrations')}
+                  className="cursor-pointer"
+                >
+                  <Plug className="mr-2 h-4 w-4" />
+                  Integrations
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign Out

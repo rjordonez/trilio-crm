@@ -11,7 +11,10 @@ import ToursPage from "@/pages/CRM/ToursPage";
 import FollowUpPage from "@/pages/CRM/FollowUpPage";
 import ChatbotPage from "@/pages/CRM/ChatbotPage";
 import ReferrersPage from "@/pages/CRM/ReferrersPage";
+import IntegrationsPage from "@/pages/CRM/IntegrationsPage";
+import SettingsPage from "@/pages/CRM/SettingsPage";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { NavigationProvider } from "@/contexts/NavigationContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Users, Handshake, LayoutGrid, Bot } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
@@ -33,6 +36,16 @@ function CRMView() {
   const isMobile = useIsMobile();
   const orgId = organization?.id;
   const alerts = useLeadAlerts(leads);
+
+  // Handle Gmail OAuth callback redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname === '/integrations' || params.get('gmail')) {
+      setCurrentPage('integrations');
+      // Clean up URL
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   useEffect(() => {
     if (!user || !orgId) return;
@@ -101,6 +114,10 @@ function CRMView() {
         return <FollowUpPage alerts={alerts} />;
       case 'chatbot':
         return <ChatbotPage alerts={alerts} />;
+      case 'integrations':
+        return <IntegrationsPage alerts={alerts} />;
+      case 'settings':
+        return <SettingsPage alerts={alerts} />;
       default:
         return <Dashboard leads={leads} alerts={alerts} />;
     }
@@ -109,6 +126,7 @@ function CRMView() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <NavigationProvider navigate={setCurrentPage}>
         <ChatProvider leads={leads} referrers={referrers}>
           <Toaster />
           <Sonner />
@@ -156,6 +174,7 @@ function CRMView() {
             <ChatBubble currentPage={currentPage} onNavigate={setCurrentPage} />
           )}
         </ChatProvider>
+        </NavigationProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

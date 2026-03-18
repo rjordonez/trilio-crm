@@ -1,9 +1,11 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import CRMView from './pages/DemoPage/CRMView';
 import LoginPage from './pages/Auth/LoginPage';
+import OrgGatePage from './pages/Auth/OrgGatePage';
+import PendingApprovalPage from './pages/Auth/PendingApprovalPage';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, organization, membershipStatus, loading } = useAuth();
 
   if (loading) {
     return (
@@ -13,7 +15,10 @@ function AppContent() {
     );
   }
 
-  return user ? <CRMView /> : <LoginPage />;
+  if (!user) return <LoginPage />;
+  if (membershipStatus === 'pending') return <PendingApprovalPage />;
+  if (!organization || membershipStatus !== 'active') return <OrgGatePage />;
+  return <CRMView />;
 }
 
 function App() {

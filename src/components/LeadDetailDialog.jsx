@@ -354,7 +354,7 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, isMobile, onStageChange, referrers = [], setLeads, setReferrers }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
@@ -483,6 +483,15 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
             <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
+            {onDelete && (
+              <button
+                onClick={() => onDelete(lead)}
+                className="ml-auto p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                title="Delete lead"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+              </button>
+            )}
             <EditableStageBadge
               stage={localStage || lead.stage}
               onChange={(newStage, rejectReason) => {

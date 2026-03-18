@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import TopBar from "@/components/TopBar";
-import { createReferrer, updateReferrer } from "@/services/supabaseReferrers";
+import { createReferrer, updateReferrer, deleteReferrer } from "@/services/supabaseReferrers";
 import { updateLead } from "@/services/supabaseLeads";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -12,12 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Building2, User, Phone, Mail, Clock,
   TrendingUp, ChevronRight, Users, FileText, ExternalLink, ArrowUpDown, ArrowUpRight, ArrowDownRight, Handshake, Pencil,
-  Table as TableIcon, GitBranch, Search,
+  Table as TableIcon, GitBranch, Search, Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 const stageLabels = {
   inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed",
@@ -40,7 +43,34 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
   const [filterRep, setFilterRep] = useState("all");
   const [filterCare, setFilterCare] = useState("all");
   const [addPartnerOpen, setAddPartnerOpen] = useState(false);
+  const [deletePartnerTarget, setDeletePartnerTarget] = useState(null);
   const localReferrers = referrers;
+
+  const handleDeletePartner = async (referrer) => {
+    try {
+      const connectedLeads = leads.filter(l => l.referrerId === referrer.id);
+
+      // Clear referrer link from connected leads
+      for (const lead of connectedLeads) {
+        await updateLead(lead.id, { ...lead, referrerId: null, referredBy: "", referPartner: "" });
+      }
+      if (connectedLeads.length > 0) {
+        setLeads(prev => prev.map(l =>
+          l.referrerId === referrer.id
+            ? { ...l, referrerId: null, referredBy: "", referPartner: "" }
+            : l
+        ));
+      }
+
+      await deleteReferrer(referrer.id);
+      setReferrers(prev => prev.filter(r => r.id !== referrer.id));
+      setDeletePartnerTarget(null);
+      setSelectedReferrer(null);
+      toast({ title: "Partner deleted", description: `${referrer.name} has been removed.${connectedLeads.length > 0 ? ` ${connectedLeads.length} lead(s) unlinked.` : ""}` });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to delete partner", variant: "destructive" });
+    }
+  };
 
   const totalReferrals = localReferrers.reduce((s, r) => s + (r.referredLeadIds || []).length, 0);
   const activePartners = localReferrers.filter((r) => r.status === "active").length;
@@ -184,7 +214,17 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
                       <TableCell className="text-center">
                         <span className="font-display font-semibold text-foreground">{(r.referredLeadIds || []).length}</span>
                       </TableCell>
-                      <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletePartnerTarget(r); }}
+                            className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                          </button>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -339,6 +379,33 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
           }
         }}
       />
+
+      {/* Delete partner confirmation */}
+      <AlertDialog open={!!deletePartnerTarget} onOpenChange={(open) => { if (!open) setDeletePartnerTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deletePartnerTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this partner.
+              {(() => {
+                const count = leads.filter(l => l.referrerId === deletePartnerTarget?.id).length;
+                if (count > 0) return (
+                  <span className="block mt-2 text-foreground font-medium">
+                    {count} lead{count !== 1 ? "s are" : " is"} linked to this partner. They will remain in the system but their referral source will be cleared.
+                  </span>
+                );
+                return null;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeletePartner(deletePartnerTarget)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

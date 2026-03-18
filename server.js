@@ -3,10 +3,27 @@ import express from 'express';
 import cors from 'cors';
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
+import { createClient } from '@supabase/supabase-js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Supabase service client for server-side operations
+const supabaseAdmin = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Helper: extract authenticated user from Authorization header
+async function getAuthUser(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+}
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -246,6 +263,258 @@ ${transcription}`;
   } catch (error) {
     console.error('Analyze lead error:', error);
     res.status(500).json({ error: 'Failed to analyze lead' });
+  }
+});
+
+// ─── Gmail Integration Routes ────────────────────────────────────────────────
+
+// Store Google OAuth tokens from Supabase Google sign-in
+app.post('/api/gmail-store-token', async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { google_access_token, google_refresh_token } = req.body;
+    if (!google_access_token) {
+      return res.status(400).json({ error: 'Missing google_access_token' });
+    }
+
+    // Get the user's Gmail address from the Google token
+    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
+      headers: { Authorization: `Bearer ${google_access_token}` },
+    });
+
+    if (!userInfoRes.ok) {
+      return res.status(502).json({ error: 'Failed to fetch Google user info' });
+    }
+
+    const userInfo = await userInfoRes.json();
+
+    // Default expiry: 1 hour from now (standard Google access token lifetime)
+    const expiry = new Date(Date.now() + 3600 * 1000).toISOString();
+
+    const { error: upsertError } = await supabaseAdmin
+      .from('gmail_tokens')
+      .upsert({
+        user_id: user.id,
+        access_token: google_access_token,
+        refresh_token: google_refresh_token || '',
+        expiry,
+        gmail_address: userInfo.email,
+      }, { onConflict: 'user_id' });
+
+    if (upsertError) {
+      console.error('Token storage error:', upsertError);
+      return res.status(500).json({ error: 'Failed to store token' });
+    }
+
+    res.json({ success: true, gmail_address: userInfo.email });
+  } catch (error) {
+    console.error('Gmail store token error:', error);
+    res.status(500).json({ error: 'Failed to store token' });
+  }
+});
+
+app.get('/api/gmail-auth-url', async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5173/api/gmail-callback';
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/gmail.send email',
+      access_type: 'offline',
+      prompt: 'consent',
+      state: user.id,
+    });
+
+    res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` });
+  } catch (error) {
+    console.error('Gmail auth URL error:', error);
+    res.status(500).json({ error: 'Failed to generate auth URL' });
+  }
+});
+
+app.get('/api/gmail-callback', async (req, res) => {
+  try {
+    const { code, state: userId } = req.query;
+    if (!code || !userId) return res.redirect('/integrations?gmail=error');
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5173/api/gmail-callback';
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      console.error('Token exchange failed:', await tokenRes.text());
+      return res.redirect('/integrations?gmail=error');
+    }
+
+    const tokens = await tokenRes.json();
+
+    // Get Gmail address
+    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    if (!userInfoRes.ok) return res.redirect('/integrations?gmail=error');
+    const userInfo = await userInfoRes.json();
+
+    const expiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+
+    const { error: upsertError } = await supabaseAdmin
+      .from('gmail_tokens')
+      .upsert({
+        user_id: userId,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expiry,
+        gmail_address: userInfo.email,
+      }, { onConflict: 'user_id' });
+
+    if (upsertError) {
+      console.error('Token storage error:', upsertError);
+      return res.redirect('/integrations?gmail=error');
+    }
+
+    res.redirect('/integrations?gmail=connected');
+  } catch (error) {
+    console.error('Gmail callback error:', error);
+    res.redirect('/integrations?gmail=error');
+  }
+});
+
+app.post('/api/gmail-send', async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { to, subject, body } = req.body;
+    if (!to || !subject || !body) {
+      return res.status(400).json({ error: 'Missing required fields: to, subject, body' });
+    }
+
+    // Get Gmail tokens
+    const { data: tokenRow, error: tokenError } = await supabaseAdmin
+      .from('gmail_tokens')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (tokenError || !tokenRow) {
+      return res.status(400).json({ error: 'Gmail not connected' });
+    }
+
+    let accessToken = tokenRow.access_token;
+
+    // Refresh if expired
+    if (new Date(tokenRow.expiry) <= new Date()) {
+      const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          refresh_token: tokenRow.refresh_token,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (!refreshRes.ok) {
+        return res.status(401).json({ error: 'Gmail token expired. Please reconnect Gmail.' });
+      }
+
+      const refreshed = await refreshRes.json();
+      accessToken = refreshed.access_token;
+      const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
+
+      await supabaseAdmin
+        .from('gmail_tokens')
+        .update({ access_token: accessToken, expiry: newExpiry })
+        .eq('user_id', user.id);
+    }
+
+    // MIME-encode subject for non-ASCII characters (RFC 2047)
+    const encodedSubject = `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`;
+
+    // Build RFC 2822 message
+    const rawMessage = [
+      `From: ${tokenRow.gmail_address}`,
+      `To: ${to}`,
+      `Subject: ${encodedSubject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      Buffer.from(body).toString('base64'),
+    ].join('\r\n');
+
+    // Base64url encode
+    const base64 = Buffer.from(rawMessage)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    // Send via Gmail API
+    const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw: base64 }),
+    });
+
+    if (!sendRes.ok) {
+      const errBody = await sendRes.text();
+      console.error('Gmail send failed:', sendRes.status, errBody);
+      return res.status(502).json({ error: 'Failed to send email via Gmail' });
+    }
+
+    const sendData = await sendRes.json();
+    res.json({ success: true, messageId: sendData.id });
+  } catch (error) {
+    console.error('Gmail send error:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+app.post('/api/gmail-disconnect', async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { error } = await supabaseAdmin
+      .from('gmail_tokens')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Gmail disconnect error:', error);
+      return res.status(500).json({ error: 'Failed to disconnect' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Gmail disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect' });
   }
 });
 
