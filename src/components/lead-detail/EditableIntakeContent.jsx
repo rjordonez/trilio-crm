@@ -399,8 +399,7 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
       {/* ── Care Needs ── */}
       <div>
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Care Needs</h4>
-        <InlineMultiLine label="Next Steps" value={fields.nextSteps} onSave={(v) => updateMulti("nextSteps", v)} />
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 mt-3">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
           <InlineField label="Type of care" value={fields.careType} onSave={(v) => update("careType", v)} />
           <InlineField label="Hours of care/day" value={fields.hoursPerDay} onSave={(v) => update("hoursPerDay", v)} />
           <InlineField label="Timeline" value={fields.timeline} onSave={(v) => update("timeline", v)} />
@@ -417,6 +416,11 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
 
       {/* ── Objections / Concerns ── */}
       <InlineMultiLine label="Objection / Concerns" value={fields.objections} onSave={(v) => updateMulti("objections", v)} />
+
+      <Separator />
+
+      {/* ── Next Steps ── */}
+      <InlineMultiLine label="Next Steps" value={fields.nextSteps} onSave={(v) => updateMulti("nextSteps", v)} />
 
       <Separator />
 

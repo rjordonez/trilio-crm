@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, Eye, EyeOff } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, Eye, EyeOff, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
@@ -44,10 +45,11 @@ const stageLabel = {
 };
 
 const careLevelColors = {
-  "Assisted Living": "bg-info/10 text-info",
-  "Independent Living": "bg-success/10 text-success",
-  "Memory Care": "bg-warning/10 text-warning",
-  "Skilled Nursing": "bg-destructive/10 text-destructive",
+  "ADL Support": "bg-info/10 text-info",
+  "Assisted Living": "bg-success/10 text-success",
+  "Post-Acute": "bg-warning/10 text-warning",
+  "Companionship": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  "Not Sure Yet": "bg-muted text-muted-foreground",
 };
 
 const scoreColors = {
@@ -58,7 +60,7 @@ const scoreColors = {
 };
 
 const sourceOptions = ["Website", "Digital Ads", "Referral Partner", "Event", "Other"];
-const careOptions = ["Companion Care", "Personal Care", "Dementia / Alzheimer's", "Post-Hospital Recovery", "24-Hour Care", "Not Sure Yet"];
+const careOptions = ["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"];
 const scoreOptions = ["cold", "hot", "nurture", "warm"];
 
 function formatDate(dateStr) {
@@ -262,6 +264,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const [stageChangeLead, setStageChangeLead] = useState(null);
   const [kanbanCareFilter, setKanbanCareFilter] = useState("all");
   const [showRejected, setShowRejected] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Call & Email dialog state
   const [callTarget, setCallTarget] = useState(null);
@@ -281,15 +284,20 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const salesRepOptions = useMemo(() => [...new Set(leads.map((l) => l.salesRep))], [leads]);
 
   const filteredLeads = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
     return leads.filter((l) => {
       if (filters.stage !== "all" && l.stage !== filters.stage) return false;
       if (filters.source !== "all" && l.source !== filters.source) return false;
       if (filters.careLevel !== "all" && l.careLevel !== filters.careLevel) return false;
       if (filters.salesRep !== "all" && l.salesRep !== filters.salesRep) return false;
       if (filters.score !== "all" && l.score !== filters.score) return false;
+      if (q) {
+        const searchable = [l.name, l.contactPerson, l.contactPhone, l.contactEmail, l.careLevel, l.source, l.salesRep, l.referredBy, l.referPartner].filter(Boolean).join(" ").toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
       return true;
     });
-  }, [leads, filters]);
+  }, [leads, filters, searchQuery]);
 
   const kanbanLeads = useMemo(() => filteredLeads.filter((l) => l.stage !== "rejected"), [filteredLeads]);
   const rejectedLeads = useMemo(() => filteredLeads.filter((l) => l.stage === "rejected"), [filteredLeads]);
@@ -514,7 +522,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         isMobile={isMobile}
       />
 
-      {/* View toggle */}
+      {/* View toggle + search */}
       <div className="flex items-center gap-2 px-4 pt-3">
         <button
           onClick={() => setView("kanban")}
@@ -534,6 +542,20 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
             <TableIcon className="h-3.5 w-3.5" /> Table
           </button>
         )}
+        <div className="ml-auto relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search leads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-48 pl-8 text-xs"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted">
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4">

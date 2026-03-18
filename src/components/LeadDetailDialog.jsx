@@ -25,10 +25,11 @@ function daysAgoText(dateStr) {
 }
 
 const careLevelColors = {
-  "Assisted Living": "bg-info/10 text-info border-info/20",
-  "Independent Living": "bg-success/10 text-success border-success/20",
-  "Memory Care": "bg-warning/10 text-warning border-warning/20",
-  "Skilled Nursing": "bg-destructive/10 text-destructive border-destructive/20",
+  "ADL Support": "bg-info/10 text-info border-info/20",
+  "Assisted Living": "bg-success/10 text-success border-success/20",
+  "Post-Acute": "bg-warning/10 text-warning border-warning/20",
+  "Companionship": "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+  "Not Sure Yet": "bg-muted text-muted-foreground border-border",
 };
 
 const scoreColors = {
@@ -387,7 +388,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
   // Merge: local (unsaved optimistic) + db (persisted) + mock generated, oldest first
   const interactions = lead
-    ? [...localInteractions, ...dbInteractions, ...lead.interactions].sort((a, b) => new Date(a.date) - new Date(b.date))
+    ? [...localInteractions, ...dbInteractions, ...lead.interactions].sort((a, b) => new Date(b.date) - new Date(a.date))
     : [];
 
   if (!lead) return null;
@@ -454,20 +455,6 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
                 <span>Lead Detail</span>
               </div>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAiSummary}
-              disabled={aiLoading}
-              className={`flex items-center gap-1.5 text-xs mr-6 ${isMobile ? "ml-auto" : ""}`}
-            >
-              {aiLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-              )}
-              AI Summary
-            </Button>
           </div>
           <DialogTitle className={`font-bold text-foreground ${isMobile ? "text-lg" : "text-xl"} flex items-center gap-2`}>
             {lead.name}
@@ -518,38 +505,6 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </div>
         </DialogHeader>
 
-        {/* AI Summary */}
-        {(aiLoading || aiSummary) && (
-          <div className={`rounded-lg border border-primary/20 bg-primary/5 shrink-0 ${isMobile ? "p-3" : "p-4"}`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h4 className="text-sm font-semibold text-foreground">AI Summary</h4>
-              </div>
-              {!aiLoading && (
-                <button onClick={() => setAiSummary(null)} className="p-0.5 rounded hover:bg-muted transition-colors">
-                  <X className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-              )}
-            </div>
-            {aiLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analyzing prospect data...
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                {aiSummary?.split("**").map((part, i) =>
-                  i % 2 === 1 ? (
-                    <strong key={i} className="text-foreground font-medium">{part}</strong>
-                  ) : (
-                    <span key={i}>{part}</span>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
           <TabsList className="w-full grid grid-cols-2 shrink-0">

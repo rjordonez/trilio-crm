@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { createReferrer } from "@/services/supabaseReferrers";
 import { toast } from "@/hooks/use-toast";
@@ -24,10 +25,12 @@ const initialForm = {
   name: "",
   age: "",
   contactPerson: "",
-  contactInfo: "",
+  contactPhone: "",
+  contactEmail: "",
   zipcode: "",
   relationship: "",
-  careType: "",
+  careManager: "",
+  careType: [],
   hoursPerDay: "",
   timeline: "",
   budget: "",
@@ -35,6 +38,7 @@ const initialForm = {
   sourceOther: "",
   referrerId: "",
   referredBy: "",
+  referPartner: "",
   notes: "",
 };
 
@@ -51,17 +55,31 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
   const setPartner = (field, value) => setPartnerForm((f) => ({ ...f, [field]: value }));
 
-  // Get contact persons for the selected referrer
-  const selectedPartner = referrers.find((r) => r.id === form.referrerId);
+  // Group referrers by organization for the dropdown
+  const orgGroups = useMemo(() => {
+    const map = new Map(); // orgName → referrer[]
+    referrers.forEach((r) => {
+      const org = r.organization || r.name;
+      if (!map.has(org)) map.set(org, []);
+      map.get(org).push(r);
+    });
+    return map;
+  }, [referrers]);
+
+  const uniqueOrgs = useMemo(() => [...orgGroups.keys()].sort(), [orgGroups]);
+
+  // Get contact persons for the selected org
+  const selectedOrgReferrers = useMemo(() => {
+    if (!form.referPartner) return [];
+    return orgGroups.get(form.referPartner) || [];
+  }, [form.referPartner, orgGroups]);
+
   const contactPersonOptions = useMemo(() => {
-    if (!selectedPartner) return [];
-    const names = new Set();
-    if (selectedPartner.contactPerson) names.add(selectedPartner.contactPerson);
-    if (selectedPartner.contacts?.length) {
-      selectedPartner.contacts.forEach((c) => { if (c.name) names.add(c.name); });
-    }
-    return [...names];
-  }, [selectedPartner]);
+    return selectedOrgReferrers.map((r) => ({
+      id: r.id,
+      name: r.contactPerson,
+    })).filter((c) => c.name);
+  }, [selectedOrgReferrers]);
 
   const partnerValid = partnerForm.name && partnerForm.contactPerson && partnerForm.email && partnerForm.type;
 
@@ -88,6 +106,8 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       const saved = await createReferrer(newPartner);
       onReferrerAdded?.(saved);
       set("referrerId", saved.id);
+      set("referPartner", saved.organization || saved.name);
+      set("referredBy", saved.contactPerson || "");
       setAddingPartner(false);
       setPartnerForm({ name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "" });
       toast({ title: "Partner added", description: `${saved.name} has been added.` });
@@ -112,9 +132,10 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       age: form.age || "",
       contactPerson: form.contactPerson || form.name || "Unknown",
       contactRelation: form.relationship || "",
-      contactPhone: form.contactInfo?.includes("@") ? "" : form.contactInfo || "",
-      contactEmail: form.contactInfo?.includes("@") ? form.contactInfo : "",
-      careLevel: form.careType || "Not Sure Yet",
+      careManager: form.careManager || "",
+      contactPhone: form.contactPhone || "",
+      contactEmail: form.contactEmail || "",
+      careLevel: form.careType.length > 0 ? form.careType.join(", ") : "Not Sure Yet",
       hoursPerDay: form.hoursPerDay || "",
       lastContactDate: dateStr,
       facility: "",
@@ -155,26 +176,26 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Row 1: Patient Name, Patient Age */}
+      {/* Row 1: Client Name, Age */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Patient Name</Label>
+          <Label className="text-xs">Client Name</Label>
           <Input className="h-9 text-sm" value={form.name} onChange={(e) => set("name", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Patient Age</Label>
+          <Label className="text-xs">Age</Label>
           <Input type="number" className="h-9 text-sm" value={form.age} onChange={(e) => set("age", e.target.value)} />
         </div>
       </div>
 
-      {/* Row 2: Contact Person, Relationship to Patient */}
+      {/* Row 2: Contact Person, Relationship to Client */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Contact Person</Label>
           <Input className="h-9 text-sm" value={form.contactPerson} onChange={(e) => set("contactPerson", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Relationship to Patient</Label>
+          <Label className="text-xs">Relationship to Client</Label>
           <Select value={form.relationship} onValueChange={(v) => set("relationship", v)}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="Select relationship" />
@@ -191,51 +212,60 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         </div>
       </div>
 
-      {/* Row 3: Contact, Zipcode */}
+      {/* Care Manager */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Contact (Phone / Email)</Label>
-          <Input className="h-9 text-sm" value={form.contactInfo} onChange={(e) => set("contactInfo", e.target.value)} />
+          <Label className="text-xs">Care Manager</Label>
+          <Input className="h-9 text-sm" placeholder="Care manager name" value={form.careManager} onChange={(e) => set("careManager", e.target.value)} />
         </div>
+      </div>
+
+      {/* Row 3: Phone, Email */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Phone</Label>
+          <Input className="h-9 text-sm" type="tel" placeholder="(555) 123-4567" value={form.contactPhone} onChange={(e) => set("contactPhone", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Email</Label>
+          <Input className="h-9 text-sm" type="email" placeholder="email@example.com" value={form.contactEmail} onChange={(e) => set("contactEmail", e.target.value)} />
+        </div>
+      </div>
+
+      {/* Row 3b: Zipcode */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Zip Code</Label>
           <Input className="h-9 text-sm" value={form.zipcode} onChange={(e) => set("zipcode", e.target.value)} />
         </div>
       </div>
 
-      {/* Row 4: Type of Care, Hours of Care / Day */}
+      {/* Type of Care (checkboxes) */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Type of Care</Label>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"].map((type) => (
+            <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox
+                checked={form.careType.includes(type)}
+                onCheckedChange={(checked) => {
+                  set("careType", checked
+                    ? [...form.careType, type]
+                    : form.careType.filter((t) => t !== type)
+                  );
+                }}
+              />
+              {type}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Hours of Care / Week */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Type of Care</Label>
-          <Select value={form.careType} onValueChange={(v) => set("careType", v)}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select type of care" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Companion Care">Companion Care</SelectItem>
-              <SelectItem value="Personal Care">Personal Care</SelectItem>
-              <SelectItem value="Dementia / Alzheimer's">Dementia / Alzheimer's</SelectItem>
-              <SelectItem value="Post-Hospital Recovery">Post-Hospital Recovery</SelectItem>
-              <SelectItem value="24-Hour Care">24-Hour Care</SelectItem>
-              <SelectItem value="Not Sure Yet">Not Sure Yet</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Hours of Care / Day</Label>
-          <Select value={form.hoursPerDay} onValueChange={(v) => set("hoursPerDay", v)}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select hours" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Less than 4 hours">Less than 4 hours</SelectItem>
-              <SelectItem value="4–6 hours">4–6 hours</SelectItem>
-              <SelectItem value="8–12 hours">8–12 hours</SelectItem>
-              <SelectItem value="Overnight">Overnight</SelectItem>
-              <SelectItem value="24 hour">24 hour</SelectItem>
-              <SelectItem value="Not sure">Not sure</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label className="text-xs">Hours of Care / Week</Label>
+          <Input className="h-9 text-sm" placeholder="e.g. 20 hours" value={form.hoursPerDay} onChange={(e) => set("hoursPerDay", e.target.value)} />
         </div>
       </div>
 
@@ -252,6 +282,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
               <SelectItem value="Within a few days">Within a few days</SelectItem>
               <SelectItem value="Within a week">Within a week</SelectItem>
               <SelectItem value="Within a month">Within a month</SelectItem>
+              <SelectItem value="More than a month">More than a month</SelectItem>
               <SelectItem value="Just researching">Just researching</SelectItem>
             </SelectContent>
           </Select>
@@ -263,10 +294,9 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
               <SelectValue placeholder="Select budget" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Under $30/hr">Under $30/hr</SelectItem>
-              <SelectItem value="$30–40/hr">$30–40/hr</SelectItem>
-              <SelectItem value="$40–50/hr">$40–50/hr</SelectItem>
-              <SelectItem value="$50+/hr">$50+/hr</SelectItem>
+              <SelectItem value="Under $40/hr">Under $40/hr</SelectItem>
+              <SelectItem value="$40–60/hr">$40–60/hr</SelectItem>
+              <SelectItem value="$60+/hr">$60+/hr</SelectItem>
               <SelectItem value="Not sure">Not sure</SelectItem>
             </SelectContent>
           </Select>
@@ -294,18 +324,23 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
           <div className="space-y-1.5">
             <Label className="text-xs">Referral Partner</Label>
             <div className="flex items-center gap-2">
-              <Select value={form.referrerId} onValueChange={(v) => {
-                set("referrerId", v);
+              <Select value={form.referPartner || ""} onValueChange={(v) => {
+                set("referPartner", v);
+                set("referrerId", "");
                 set("referredBy", "");
-                const partner = referrers.find((r) => r.id === v);
-                if (partner) set("referPartner", partner.name);
+                // Auto-select if only one contact at this org
+                const orgRefs = orgGroups.get(v) || [];
+                if (orgRefs.length === 1) {
+                  set("referrerId", orgRefs[0].id);
+                  set("referredBy", orgRefs[0].contactPerson || "");
+                }
               }}>
                 <SelectTrigger className="h-9 text-sm flex-1">
                   <SelectValue placeholder="Select partner" />
                 </SelectTrigger>
                 <SelectContent>
-                  {referrers.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  {uniqueOrgs.map((org) => (
+                    <SelectItem key={org} value={org}>{org}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -315,16 +350,20 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
             </div>
           </div>
         )}
-        {form.source === "Referral Partner" && !addingPartner && form.referrerId && contactPersonOptions.length > 0 && (
+        {form.source === "Referral Partner" && !addingPartner && form.referPartner && contactPersonOptions.length > 1 && (
           <div className="space-y-1.5">
             <Label className="text-xs">Referred By (Contact Person)</Label>
-            <Select value={form.referredBy} onValueChange={(v) => set("referredBy", v)}>
+            <Select value={form.referrerId} onValueChange={(v) => {
+              set("referrerId", v);
+              const ref = referrers.find((r) => r.id === v);
+              if (ref) set("referredBy", ref.contactPerson || "");
+            }}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue placeholder="Select contact person" />
               </SelectTrigger>
               <SelectContent>
-                {contactPersonOptions.map((name) => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                {contactPersonOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -552,7 +552,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                   </div>
                   <p className="text-[11px] text-muted-foreground">{referrer.type} &middot; {contactPersons.length} contact{contactPersons.length !== 1 ? "s" : ""}</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {orgStats.total} referral{orgStats.total !== 1 ? "s" : ""} &middot; {orgStats.conversionRate}% conversion &middot; {orgStats.totalHours}h total
+                    {orgStats.total} referral{orgStats.total !== 1 ? "s" : ""} &middot; {orgStats.conversionRate}% conversion &middot; {orgStats.totalHours}h total &middot; {orgStats.closed > 0 ? Math.round(orgStats.totalHours / orgStats.closed) : 0}h avg/closed
                   </p>
                 </div>
 
@@ -588,7 +588,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                             <p className="text-xs font-semibold text-foreground">{cpName}</p>
                           </div>
                           <p className="text-[10px] text-muted-foreground">
-                            {orgName} &middot; {cpLeads.length} referral{cpLeads.length !== 1 ? "s" : ""}
+                            {cpLeads.length} referral{cpLeads.length !== 1 ? "s" : ""}
                           </p>
                           {cpLeads.length > 0 && (
                             <p className="text-[10px] text-muted-foreground">

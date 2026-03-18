@@ -34,7 +34,7 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
   const [localNames, setLocalNames] = useState([]);
 
   const existingPartners = useMemo(() => {
-    const names = [...referrers.map((r) => r.name).filter(Boolean), ...localNames];
+    const names = [...referrers.map((r) => r.organization || r.name).filter(Boolean), ...localNames];
     return [...new Set(names)].sort();
   }, [referrers, localNames]);
 
