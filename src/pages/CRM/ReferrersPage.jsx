@@ -12,7 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Building2, User, Phone, Mail, Clock,
   TrendingUp, ChevronRight, Users, FileText, ExternalLink, ArrowUpDown, ArrowUpRight, ArrowDownRight, Handshake, Pencil,
+  Table as TableIcon, GitBranch, Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
 
@@ -459,6 +462,22 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
 
   const totalLeads = allOrgLeads.length;
 
+  const [referralView, setReferralView] = useState("tree");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [contactFilter, setContactFilter] = useState("all");
+
+  const filteredLeads = useMemo(() => {
+    let list = allOrgLeads;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(l => (l.name || "").toLowerCase().includes(q) || (l.contactPerson || "").toLowerCase().includes(q));
+    }
+    if (stageFilter !== "all") list = list.filter(l => l.stage === stageFilter);
+    if (contactFilter !== "all") list = list.filter(l => (l.referredBy || "") === contactFilter);
+    return list;
+  }, [allOrgLeads, searchQuery, stageFilter, contactFilter]);
+
   // Analytics per contact person
   const contactPersonStats = useMemo(() => {
     const stats = {};
@@ -499,14 +518,14 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
             {referrer.name}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-5">
+        <div className="space-y-5 flex-1 overflow-y-auto min-h-0">
           <div className="grid grid-cols-2 gap-3">
             <InfoRow icon={FileText} label="Type" value={referrer.type} />
             <InfoRow icon={Phone} label="Main Phone" value={referrer.phone} />
@@ -536,16 +555,108 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
             <InfoRow icon={User} label="Contact" value={referrer.contactPerson} />
           )}
 
-          {/* Mind Map Tree View */}
+          {/* Referrals Section */}
           <div>
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-              <ExternalLink className="h-4 w-4" /> Referral Tree ({totalLeads})
-            </h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <ExternalLink className="h-4 w-4" /> Referrals ({totalLeads})
+              </h4>
+              {totalLeads > 0 && (
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setReferralView("tree")}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${referralView === "tree" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                  >
+                    <GitBranch className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setReferralView("table")}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${referralView === "table" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                  >
+                    <TableIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
 
             {totalLeads === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No referrals yet</p>
+            ) : referralView === "table" ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input className="h-8 text-xs pl-7" placeholder="Search leads..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  </div>
+                  <Select value={stageFilter} onValueChange={setStageFilter}>
+                    <SelectTrigger className="h-8 text-xs w-[140px]">
+                      <SelectValue placeholder="Stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Stages</SelectItem>
+                      {Object.entries(stageLabels).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {contactPersons.length > 1 && (
+                    <Select value={contactFilter} onValueChange={setContactFilter}>
+                      <SelectTrigger className="h-8 text-xs w-[140px]">
+                        <SelectValue placeholder="Contact" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Contacts</SelectItem>
+                        {contactPersons.map((cp) => (
+                          <SelectItem key={cp} value={cp}>{cp}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div className="rounded-lg border border-border bg-card overflow-auto max-h-[280px] overscroll-contain">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-card z-10">
+                      <TableRow>
+                        <TableHead className="min-w-[140px] whitespace-nowrap">Name</TableHead>
+                        <TableHead className="min-w-[130px] whitespace-nowrap">Stage</TableHead>
+                        <TableHead className="min-w-[120px] whitespace-nowrap">Contact</TableHead>
+                        <TableHead className="min-w-[100px] whitespace-nowrap">Care Type</TableHead>
+                        {contactPersons.length > 1 && <TableHead className="min-w-[110px] whitespace-nowrap">Referred By</TableHead>}
+                        <TableHead className="min-w-[80px] whitespace-nowrap">Hours</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLeads.length === 0 ? (
+                        <TableRow><TableCell colSpan={contactPersons.length > 1 ? 6 : 5} className="text-center text-sm text-muted-foreground py-4">No matching leads</TableCell></TableRow>
+                      ) : (
+                        filteredLeads.map((lead) => (
+                          <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onLeadClick(lead)}>
+                            <TableCell className="font-medium text-foreground whitespace-nowrap">{lead.name}</TableCell>
+                            <TableCell>
+                              {lead.stage === "rejected" ? (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-destructive/10 text-destructive whitespace-nowrap">Rejected</span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <Progress value={({ inquiry: 10, assessment_scheduled: 30, assessment_completed: 50, proposal_sent: 70, pending_decision: 85, closed: 100 })[lead.stage] || 0} className="h-2 w-12" />
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">{stageLabels[lead.stage] || lead.stage}</span>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.contactPerson}{lead.contactRelation ? ` (${lead.contactRelation})` : ""}</TableCell>
+                            <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.careLevel}</TableCell>
+                            {contactPersons.length > 1 && <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.referredBy || "—"}</TableCell>}
+                            <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.hoursPerDay || "—"}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             ) : (
-              <div className="flex flex-col items-center">
+              <div className="overflow-x-auto pb-2">
+              <div className="flex flex-col items-center min-w-max">
                 {/* Root node - Organization */}
                 <div className="rounded-lg border-2 border-primary bg-primary/5 px-5 py-3 text-center shadow-sm">
                   <div className="flex items-center justify-center gap-2 mb-1">
@@ -574,7 +685,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                 )}
 
                 {/* Contact Person branches */}
-                <div className="flex flex-wrap justify-center gap-x-4 gap-y-6 w-full">
+                <div className="flex justify-center gap-x-4 w-full">
                   {contactPersons.map((cpName) => {
                     const cpLeads = contactPersonLeadsMap[cpName] || [];
                     const cpStat = contactPersonStats[cpName] || {};
@@ -617,7 +728,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                             )}
 
                             {/* Lead nodes */}
-                            <div className="flex flex-wrap justify-center gap-x-1 gap-y-4 w-full">
+                            <div className="flex justify-center gap-x-1 w-full">
                               {cpLeads.map((lead) => (
                                 <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "100px", flex: `0 1 ${Math.max(100, Math.floor(300 / cpLeads.length))}px` }}>
                                   <div className="w-px h-5 bg-border" />
@@ -638,6 +749,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                     );
                   })}
                 </div>
+              </div>
               </div>
             )}
           </div>
