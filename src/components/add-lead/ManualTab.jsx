@@ -29,7 +29,6 @@ const initialForm = {
   contactEmail: "",
   zipcode: "",
   relationship: "",
-  careManager: "",
   careType: [],
   hoursPerDay: "",
   timeline: "",
@@ -148,7 +147,6 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       age: form.age || "",
       contactPerson: form.contactPerson || form.name || "Unknown",
       contactRelation: form.relationship || "",
-      careManager: form.careManager || "",
       contactPhone: form.contactPhone || "",
       contactEmail: form.contactEmail || "",
       careLevel: form.careType.length > 0 ? form.careType.join(", ") : "Not Sure Yet",
@@ -223,17 +221,10 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
               <SelectItem value="Spouse">Spouse</SelectItem>
               <SelectItem value="Relative">Relative</SelectItem>
               <SelectItem value="Hospital / Social Worker">Hospital / Social Worker</SelectItem>
+              <SelectItem value="Care Manager">Care Manager</SelectItem>
               <SelectItem value="Other">Other</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
-
-      {/* Care Manager */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Care Manager</Label>
-          <Input className="h-9 text-sm" placeholder="Care manager name" value={form.careManager} onChange={(e) => set("careManager", e.target.value)} />
         </div>
       </div>
 

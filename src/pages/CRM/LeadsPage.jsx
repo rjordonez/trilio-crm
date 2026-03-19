@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, Eye, EyeOff, Search } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -198,7 +198,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
                 : "hover:bg-destructive/10 text-destructive"
             }`}
           >
-            <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" /> Reject</span>
+            <span className="flex items-center gap-2"><XCircle className="h-4 w-4" /> Reject</span>
             {lead.stage === "rejected" && <Check className="h-4 w-4" />}
           </button>
         ) : (
@@ -433,12 +433,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                       {lead.name}
                     </p>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setRejectTarget(lead)}
-                        className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setRejectTarget(lead)}
+                            className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                          >
+                            <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom"><p>Reject</p></TooltipContent>
+                      </Tooltip>
                       <button
                         onClick={() => setStageChangeLead(lead)}
                         className="p-1.5 rounded hover:bg-muted transition-colors"
@@ -625,12 +630,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                                   >
                                     <div className="flex items-center justify-between">
                                       <p className="text-sm font-semibold text-foreground">{lead.name}</p>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setRejectTarget(lead); }}
-                                        className="p-1 rounded hover:bg-destructive/10 transition-colors"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                                      </button>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setRejectTarget(lead); }}
+                                            className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                                          >
+                                            <XCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom"><p>Reject</p></TooltipContent>
+                                      </Tooltip>
                                     </div>
                                     <div className="mt-2 space-y-1.5">
                                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -484,13 +485,17 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
             <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
             {onDelete && (
-              <button
-                onClick={() => onDelete(lead)}
-                className="ml-auto p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                title="Delete lead"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onDelete(lead)}
+                    className="ml-auto p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom"><p>Delete</p></TooltipContent>
+              </Tooltip>
             )}
             <EditableStageBadge
               stage={localStage || lead.stage}

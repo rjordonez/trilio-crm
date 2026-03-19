@@ -35,7 +35,15 @@ function CRMView() {
   const [dataLoading, setDataLoading] = useState(true);
   const isMobile = useIsMobile();
   const orgId = organization?.id;
-  const alerts = useLeadAlerts(leads);
+  const allAlerts = useLeadAlerts(leads);
+  const [dismissedAlertIds, setDismissedAlertIds] = useState(new Set());
+  const alerts = allAlerts.filter(a => !dismissedAlertIds.has(a.id));
+  const dismissAlert = useCallback((alertId) => {
+    setDismissedAlertIds(prev => new Set([...prev, alertId]));
+  }, []);
+  const clearAllAlerts = useCallback(() => {
+    setDismissedAlertIds(new Set(allAlerts.map(a => a.id)));
+  }, [allAlerts]);
 
   // Handle Gmail OAuth callback redirect
   useEffect(() => {
@@ -125,8 +133,8 @@ function CRMView() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NavigationProvider navigate={setCurrentPage}>
+      <TooltipProvider delayDuration={200}>
+        <NavigationProvider navigate={setCurrentPage} dismissAlert={dismissAlert} clearAllAlerts={clearAllAlerts}>
         <ChatProvider leads={leads} referrers={referrers}>
           <Toaster />
           <Sonner />

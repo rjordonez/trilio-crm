@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, Plus, Upload, LogOut, Clock, AlertTriangle, Settings, Plug } from "lucide-react";
+import { Bell, Plus, Upload, LogOut, Clock, AlertTriangle, Settings, Plug, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigation } from "@/contexts/NavigationContext";
@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-function NotificationPanel({ alerts, onClose }) {
+function NotificationPanel({ alerts, onClose, onDismiss, onClearAll }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -32,7 +32,12 @@ function NotificationPanel({ alerts, onClose }) {
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <span className="text-sm font-semibold text-foreground">Notifications</span>
         {alerts.length > 0 && (
-          <span className="text-xs text-muted-foreground">{alerts.length} alert{alerts.length !== 1 ? "s" : ""}</span>
+          <button
+            onClick={onClearAll}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Clear all
+          </button>
         )}
       </div>
       <div className="max-h-72 overflow-y-auto">
@@ -40,16 +45,22 @@ function NotificationPanel({ alerts, onClose }) {
           <div className="px-4 py-6 text-center text-sm text-muted-foreground">No alerts</div>
         ) : (
           alerts.map((alert) => (
-            <div key={alert.id} className="flex items-start gap-3 border-b border-border/50 px-4 py-3 last:border-0 hover:bg-muted/50 transition-colors">
+            <div key={alert.id} className="flex items-start gap-3 border-b border-border/50 px-4 py-3 last:border-0 hover:bg-muted/50 transition-colors group">
               {alert.type === "inquiry_aging" ? (
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
               ) : (
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
               )}
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground truncate">{alert.leadName}</p>
                 <p className="text-xs text-muted-foreground">{alert.message}</p>
               </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDismiss(alert.id); }}
+                className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
             </div>
           ))
         )}
@@ -60,7 +71,7 @@ function NotificationPanel({ alerts, onClose }) {
 
 export default function TopBar({ title, subtitle, action, secondaryAction, isMobile, alerts = [] }) {
   const { signOut, user } = useAuth();
-  const { navigate } = useNavigation();
+  const { navigate, dismissAlert, clearAllAlerts } = useNavigation();
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
@@ -89,14 +100,14 @@ export default function TopBar({ title, subtitle, action, secondaryAction, isMob
                 onClick={() => setNotifOpen(!notifOpen)}
                 className="relative rounded-md p-2 text-muted-foreground hover:bg-muted transition-colors"
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-5 w-5" />
                 {alerts.length > 0 && (
-                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
                     {alerts.length > 9 ? "9+" : alerts.length}
                   </span>
                 )}
               </button>
-              {notifOpen && <NotificationPanel alerts={alerts} onClose={() => setNotifOpen(false)} />}
+              {notifOpen && <NotificationPanel alerts={alerts} onClose={() => setNotifOpen(false)} onDismiss={dismissAlert} onClearAll={clearAllAlerts} />}
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

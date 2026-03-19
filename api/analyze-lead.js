@@ -18,7 +18,7 @@ export default async function handler(req) {
 - "contactPhone": phone number if mentioned
 - "contactEmail": email if mentioned
 - "zipcode": zip code if mentioned
-- "relationship": MUST be one of: "Self", "Daughter / Son", "Spouse", "Relative", "Hospital / Social Worker", "Other" — or empty string
+- "relationship": MUST be one of: "Self", "Daughter / Son", "Spouse", "Relative", "Hospital / Social Worker", "Care Manager", "Other" — or empty string
 - "careType": array of care types mentioned, each MUST be one of: "ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"
 - "hoursPerDay": hours of care needed if mentioned (e.g. "20 hours", "4-6 hours")
 - "timeline": MUST be one of: "Immediately", "Within a few days", "Within a week", "Within a month", "More than a month", "Just researching" — or empty string
@@ -64,7 +64,7 @@ ${transcription}`;
     const result = JSON.parse(data.choices[0].message.content);
 
     // Validate enum fields
-    const validRelationships = ["Self", "Daughter / Son", "Spouse", "Relative", "Hospital / Social Worker", "Other"];
+    const validRelationships = ["Self", "Daughter / Son", "Spouse", "Relative", "Hospital / Social Worker", "Care Manager", "Other"];
     const validCareTypes = ["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"];
     const validTimelines = ["Immediately", "Within a few days", "Within a week", "Within a month", "More than a month", "Just researching"];
     const validBudgets = ["Under $40/hr", "$40–60/hr", "$60+/hr", "Not sure"];

@@ -103,7 +103,7 @@ export default function OrgGatePage() {
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                placeholder="e.g. Pallas Care"
+                placeholder="e.g. XYZ Care"
                 required
               />
               <p className="text-xs text-muted-foreground">

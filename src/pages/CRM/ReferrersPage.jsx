@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import TopBar from "@/components/TopBar";
 import { createReferrer, updateReferrer, deleteReferrer } from "@/services/supabaseReferrers";
 import { updateLead } from "@/services/supabaseLeads";
@@ -15,9 +15,13 @@ import {
   Table as TableIcon, GitBranch, Search, Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import LeadDetailDialog from "@/components/LeadDetailDialog";
 import AddPartnerSheet from "@/components/AddPartnerSheet";
+import { ReactFlow, Background, useNodesState, useEdgesState, Position, Handle } from "@xyflow/react";
+import dagre from "dagre";
+import "@xyflow/react/dist/style.css";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -112,10 +116,10 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
   }, [localReferrers, leads]);
 
   // Filter options
-  const uniquePartners = [...new Set(allReferredLeads.map(l => l.partnerName))];
-  const uniqueStages = [...new Set(allReferredLeads.map(l => l.stage))];
-  const uniqueReps = [...new Set(allReferredLeads.map(l => l.salesRep))];
-  const uniqueCare = [...new Set(allReferredLeads.map(l => l.careLevel))];
+  const uniquePartners = [...new Set(allReferredLeads.map(l => l.partnerName).filter(Boolean))];
+  const uniqueStages = [...new Set(allReferredLeads.map(l => l.stage).filter(Boolean))];
+  const uniqueReps = [...new Set(allReferredLeads.map(l => l.salesRep).filter(Boolean))];
+  const uniqueCare = [...new Set(allReferredLeads.map(l => l.careLevel).filter(Boolean))];
 
   const filteredLeads = useMemo(() => {
     return allReferredLeads.filter(l =>
@@ -216,12 +220,17 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeletePartnerTarget(r); }}
-                            className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDeletePartnerTarget(r); }}
+                                className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom"><p>Delete</p></TooltipContent>
+                          </Tooltip>
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </div>
                       </TableCell>
@@ -411,6 +420,173 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
   );
 }
 
+const NODE_WIDTH = 150;
+const NODE_HEIGHT = 50;
+
+function getLayoutedElements(nodes, edges) {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "TB", nodesep: 15, ranksep: 50 });
+
+  nodes.forEach((node) => {
+    const w = node.type === "leadGroup" ? 170 : NODE_WIDTH;
+    const h = node.type === "leadGroup" ? Math.max(NODE_HEIGHT, (node.data.leads?.length || 1) * 24 + 8) : NODE_HEIGHT;
+    g.setNode(node.id, { width: w, height: h });
+  });
+  edges.forEach((edge) => g.setEdge(edge.source, edge.target));
+  dagre.layout(g);
+
+  const layoutedNodes = nodes.map((node) => {
+    const pos = g.node(node.id);
+    return { ...node, position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 } };
+  });
+
+  return { nodes: layoutedNodes, edges };
+}
+
+const nodeTypes = {};
+
+function OrgNode({ data }) {
+  return (
+    <>
+      <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-center min-w-[140px]">
+        <div className="flex items-center justify-center gap-1.5">
+          <Building2 className="h-3.5 w-3.5 text-primary" />
+          <p className="text-xs font-medium text-foreground">{data.label}</p>
+        </div>
+        <p className="text-[9px] text-muted-foreground mt-0.5">{data.sub}</p>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!w-1.5 !h-1.5 !bg-border !border-0 !-bottom-1" />
+    </>
+  );
+}
+
+function ContactNode({ data }) {
+  return (
+    <>
+      <Handle type="target" position={Position.Top} className="!w-1.5 !h-1.5 !bg-border !border-0 !-top-1" />
+      <div className={`rounded-md border px-3 py-1.5 text-center min-w-[120px] ${data.isPrimary ? "border-primary/25 bg-primary/[0.03]" : "border-border/50 bg-muted/20"}`}>
+        <div className="flex items-center justify-center gap-1">
+          <User className="h-3 w-3 text-primary/70" />
+          <p className="text-[10px] font-medium text-foreground">{data.label}</p>
+        </div>
+        <p className="text-[8px] text-muted-foreground mt-0.5">{data.sub}</p>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!w-1.5 !h-1.5 !bg-border !border-0 !-bottom-1" />
+    </>
+  );
+}
+
+function LeadGroupNode({ data }) {
+  const sc = { hot: "bg-red-400", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-300" };
+  return (
+    <>
+      <Handle type="target" position={Position.Top} className="!w-1.5 !h-1.5 !bg-border !border-0 !-top-1" />
+      <div className="rounded-md border border-border/40 bg-card w-[160px] overflow-hidden nopan">
+        {data.leads.map((lead, i) => (
+          <div
+            key={lead.id}
+            className={`flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-muted/50 transition-colors ${i < data.leads.length - 1 ? "border-b border-border/20" : ""}`}
+            onClick={(e) => { e.stopPropagation(); data.onLeadClick(lead); }}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sc[lead.score] || "bg-slate-300"}`} />
+            <p className="text-[9px] font-medium text-primary/80 truncate flex-1">{lead.name}</p>
+            <p className="text-[8px] text-muted-foreground shrink-0">
+              {lead.stage === "closed" ? `Closed · ${lead.serviceHours ?? 0}h` : (data.stageLabels[lead.stage] || lead.stage)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+nodeTypes.org = OrgNode;
+nodeTypes.contact = ContactNode;
+nodeTypes.leadGroup = LeadGroupNode;
+
+function ReferralTree({ orgName, orgStats, referrer, contactPersons, contactPersonLeadsMap, contactPersonStats, scoreColors, stageLabels, onLeadClick }) {
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+    const nodes = [];
+    const edges = [];
+
+    // Org node
+    const orgId = "org";
+    nodes.push({
+      id: orgId,
+      type: "org",
+      data: {
+        label: orgName,
+        sub: `${referrer.type} · ${orgStats.total} referrals · ${orgStats.closed > 0 ? Math.round(orgStats.totalHours / orgStats.closed) : 0} avg.h/closed`,
+      },
+      position: { x: 0, y: 0 },
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
+    });
+
+    contactPersons.forEach((cpName, cpIdx) => {
+      const cpLeads = contactPersonLeadsMap[cpName] || [];
+      const cpStat = contactPersonStats[cpName] || {};
+      const cpId = `cp-${cpIdx}`;
+
+      nodes.push({
+        id: cpId,
+        type: "contact",
+        data: {
+          label: cpName,
+          sub: `${cpLeads.length} ref${cpLeads.length !== 1 ? "s" : ""}${cpStat.closed > 0 ? ` · ${Math.round(cpStat.totalHours / cpStat.closed)} avg.h/closed` : ""}`,
+          isPrimary: cpName === referrer.contactPerson,
+        },
+        position: { x: 0, y: 0 },
+        sourcePosition: Position.Bottom,
+        targetPosition: Position.Top,
+      });
+
+      edges.push({ id: `e-org-${cpId}`, source: orgId, target: cpId, type: "smoothstep", style: { stroke: "hsl(var(--border))", strokeWidth: 1 } });
+
+      if (cpLeads.length > 0) {
+        const groupId = `leads-${cpIdx}`;
+        nodes.push({
+          id: groupId,
+          type: "leadGroup",
+          data: { leads: cpLeads, onLeadClick, stageLabels },
+          position: { x: 0, y: 0 },
+          sourcePosition: Position.Bottom,
+          targetPosition: Position.Top,
+        });
+        edges.push({ id: `e-${cpId}-${groupId}`, source: cpId, target: groupId, type: "smoothstep", style: { stroke: "hsl(var(--border) / 0.6)", strokeWidth: 1 } });
+      }
+    });
+
+    return getLayoutedElements(nodes, edges);
+  }, [orgName, referrer, orgStats, contactPersons, contactPersonLeadsMap, contactPersonStats, stageLabels, onLeadClick]);
+
+  const [nodes] = useNodesState(initialNodes);
+  const [edges] = useEdgesState(initialEdges);
+
+  return (
+    <div style={{ width: "100%", height: "420px" }} className="rounded-lg border border-border/30">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.3 }}
+        minZoom={0.3}
+        maxZoom={1.5}
+        proOptions={{ hideAttribution: true }}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        panOnDrag
+        zoomOnScroll
+      >
+        <Background gap={20} size={1} color="hsl(var(--border) / 0.15)" />
+      </ReactFlow>
+    </div>
+  );
+}
+
 function SnapshotKPI({ icon: Icon, label, value, prev, current }) {
   const hasDiff = prev !== undefined && current !== undefined;
   const diff = hasDiff ? current - prev : 0;
@@ -584,7 +760,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
 
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
@@ -722,102 +898,17 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                 </div>
               </>
             ) : (
-              <div className="overflow-x-auto pb-2">
-              <div className="flex flex-col items-center min-w-max">
-                {/* Root node - Organization */}
-                <div className="rounded-lg border-2 border-primary bg-primary/5 px-5 py-3 text-center shadow-sm">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold text-foreground">{orgName}</p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">{referrer.type} &middot; {contactPersons.length} contact{contactPersons.length !== 1 ? "s" : ""}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {orgStats.total} referral{orgStats.total !== 1 ? "s" : ""} &middot; {orgStats.conversionRate}% conversion &middot; {orgStats.totalHours}h total &middot; {orgStats.closed > 0 ? Math.round(orgStats.totalHours / orgStats.closed) : 0}h avg/closed
-                  </p>
-                </div>
-
-                {/* Connector: Org → Contact Persons */}
-                <div className="w-px h-5 bg-border" />
-
-                {/* Horizontal bar for multiple contact persons */}
-                {contactPersons.length > 1 && (
-                  <div className="relative w-full flex justify-center" style={{ height: "1px" }}>
-                    <div
-                      className="h-px bg-border absolute top-0"
-                      style={{
-                        width: `${Math.min(90, (contactPersons.length - 1) * (100 / contactPersons.length))}%`,
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Contact Person branches */}
-                <div className="flex justify-center gap-x-4 w-full">
-                  {contactPersons.map((cpName) => {
-                    const cpLeads = contactPersonLeadsMap[cpName] || [];
-                    const cpStat = contactPersonStats[cpName] || {};
-                    return (
-                      <div key={cpName} className="flex flex-col items-center" style={{ minWidth: "140px", flex: `0 1 ${Math.max(160, Math.floor(520 / contactPersons.length))}px` }}>
-                        {/* Vertical connector to contact person */}
-                        <div className="w-px h-5 bg-border" />
-
-                        {/* Contact Person node */}
-                        <div className={`rounded-lg border bg-primary/5 px-4 py-2.5 text-center shadow-sm w-full ${cpName === referrer.contactPerson ? "border-primary/60 ring-1 ring-primary/20" : "border-primary/30"}`}>
-                          <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                            <User className="h-3.5 w-3.5 text-primary" />
-                            <p className="text-xs font-semibold text-foreground">{cpName}</p>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            {cpLeads.length} referral{cpLeads.length !== 1 ? "s" : ""}
-                          </p>
-                          {cpLeads.length > 0 && (
-                            <p className="text-[10px] text-muted-foreground">
-                              Conversion: {cpStat.conversionRate}% &middot; {cpStat.totalHours}h
-                            </p>
-                          )}
-                        </div>
-
-                        {cpLeads.length > 0 && (
-                          <>
-                            {/* Connector: Contact Person → Leads */}
-                            <div className="w-px h-5 bg-border" />
-
-                            {/* Horizontal bar for leads */}
-                            {cpLeads.length > 1 && (
-                              <div className="relative w-full flex justify-center" style={{ height: "1px" }}>
-                                <div
-                                  className="h-px bg-border absolute top-0"
-                                  style={{
-                                    width: `${Math.min(90, (cpLeads.length - 1) * (100 / cpLeads.length))}%`,
-                                  }}
-                                />
-                              </div>
-                            )}
-
-                            {/* Lead nodes */}
-                            <div className="flex justify-center gap-x-1 w-full">
-                              {cpLeads.map((lead) => (
-                                <div key={lead.id} className="flex flex-col items-center" style={{ minWidth: "100px", flex: `0 1 ${Math.max(100, Math.floor(300 / cpLeads.length))}px` }}>
-                                  <div className="w-px h-5 bg-border" />
-                                  <div
-                                    className="rounded-lg border border-border bg-card p-3 w-full cursor-pointer hover:border-primary hover:shadow-md transition-all text-center group"
-                                    onClick={() => onLeadClick(lead)}
-                                  >
-                                    <p className="text-xs font-semibold text-primary group-hover:underline underline-offset-2 truncate mb-1.5">{lead.name}</p>
-                                    <p className="text-[10px] text-muted-foreground mt-1">{stageLabels[lead.stage]}</p>
-                                    {lead.stage === "closed" && <p className="text-[10px] text-muted-foreground mt-0.5">{lead.serviceHours != null ? lead.serviceHours : (hoursLookup[lead.hoursPerDay] || 0)}h</p>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              </div>
+              <ReferralTree
+                orgName={orgName}
+                orgStats={orgStats}
+                referrer={referrer}
+                contactPersons={contactPersons}
+                contactPersonLeadsMap={contactPersonLeadsMap}
+                contactPersonStats={contactPersonStats}
+                scoreColors={scoreColors}
+                stageLabels={stageLabels}
+                onLeadClick={onLeadClick}
+              />
             )}
           </div>
 
