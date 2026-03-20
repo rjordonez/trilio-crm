@@ -29,6 +29,8 @@ import ImportCSVDialog from "@/components/ImportCSVDialog";
 import CallDialog from "@/components/CallDialog";
 import EmailComposeDialog from "@/components/EmailComposeDialog";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
+import { defaultTemplates, personalizeContent } from "@/data/emailTemplates";
 
 const stages = [
   { key: "inquiry", label: "Inquiry" },
@@ -256,7 +258,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
 }
 
 export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask }) {
-  const { user, organization } = useAuth();
+  const { user, organization, gmailConnected } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
   const isMobile = useIsMobile();
@@ -334,6 +336,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
 
   const handleStageChange = useCallback((leadId, newStage, rejectReason) => {
     let oldStage = "";
+    let rejectedLead = null;
     setLeads((prev) =>
       prev.map((l) => {
         if (l.id === leadId) {
@@ -342,6 +345,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           if (newStage === "rejected") {
             updated.rejectedReason = rejectReason || "";
             updated.rejectedDate = new Date().toISOString().split("T")[0];
+            rejectedLead = updated;
           }
           updateLead(leadId, updated).catch(console.error);
           return updated;
@@ -361,6 +365,11 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         by: userName,
         date: dateStr,
       }, orgId).catch((err) => console.error("Failed to save activity log:", err));
+
+      // Prompt user to send rejection email if Gmail is connected
+      if (gmailConnected && rejectedLead?.contactEmail) {
+        setPendingRejectionEmail({ lead: rejectedLead, leadId, dateStr });
+      }
     } else {
       createActivityLog({
         leadId,
@@ -371,7 +380,59 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         date: dateStr,
       }, orgId).catch((err) => console.error("Failed to save activity log:", err));
     }
-  }, [setLeads, userName]);
+  }, [setLeads, userName, gmailConnected, orgId]);
+
+  // Pending rejection email approval with preview
+  const [pendingRejectionEmail, setPendingRejectionEmail] = useState(null);
+  const [rejectionEmailSubject, setRejectionEmailSubject] = useState("");
+  const [rejectionEmailBody, setRejectionEmailBody] = useState("");
+  const [rejectionEmailSending, setRejectionEmailSending] = useState(false);
+
+  // When pendingRejectionEmail is set, pre-fill from saved template or default
+  useEffect(() => {
+    if (pendingRejectionEmail) {
+      const defaultTemplate = defaultTemplates.find((t) => t.id === "t6");
+      let subject = defaultTemplate?.subject || "";
+      let body = defaultTemplate?.body || "";
+      // Check for user-customized template in localStorage
+      if (orgId) {
+        try {
+          const saved = JSON.parse(localStorage.getItem(`rejection_template_${orgId}`));
+          if (saved) {
+            subject = saved.subject;
+            body = saved.body;
+          }
+        } catch {}
+      }
+      setRejectionEmailSubject(personalizeContent(subject, pendingRejectionEmail.lead, userName));
+      setRejectionEmailBody(personalizeContent(body, pendingRejectionEmail.lead, userName));
+    }
+  }, [pendingRejectionEmail, orgId, userName]);
+
+  const sendRejectionEmail = useCallback(async () => {
+    if (!pendingRejectionEmail || !rejectionEmailSubject.trim() || !rejectionEmailBody.trim()) return;
+    const { lead, leadId, dateStr } = pendingRejectionEmail;
+    setRejectionEmailSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/gmail-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ to: lead.contactEmail, subject: rejectionEmailSubject, body: rejectionEmailBody }),
+      });
+      if (res.ok) {
+        toast({ title: "Rejection email sent", description: `Email sent to ${lead.contactEmail}` });
+        createActivityLog({ leadId, type: "email", title: "Auto: Rejection Notice", description: `Rejection email sent to ${lead.contactEmail}`, by: userName, date: dateStr }, orgId).catch(console.error);
+      } else {
+        toast({ title: "Send failed", description: "Could not send rejection email", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Send failed", description: "Could not send rejection email", variant: "destructive" });
+    }
+    setRejectionEmailSending(false);
+    setPendingRejectionEmail(null);
+  }, [pendingRejectionEmail, rejectionEmailSubject, rejectionEmailBody, userName, orgId]);
 
   // Reject lead from kanban trash icon
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -904,6 +965,46 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rejection email preview & approval dialog */}
+      <Dialog open={!!pendingRejectionEmail} onOpenChange={(open) => { if (!open) setPendingRejectionEmail(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send rejection email?</DialogTitle>
+            <DialogDescription>
+              Review and edit the email before sending to <span className="font-medium text-foreground">{pendingRejectionEmail?.lead?.contactEmail}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground w-10 shrink-0">To:</span>
+              <span className="text-foreground font-medium">{pendingRejectionEmail?.lead?.name} &lt;{pendingRejectionEmail?.lead?.contactEmail}&gt;</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground w-10 shrink-0">Subj:</span>
+              <Input
+                value={rejectionEmailSubject}
+                onChange={(e) => setRejectionEmailSubject(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+            <Textarea
+              value={rejectionEmailBody}
+              onChange={(e) => setRejectionEmailBody(e.target.value)}
+              className="min-h-[200px] text-sm"
+            />
+            <div className="flex gap-2">
+              <Button onClick={sendRejectionEmail} disabled={rejectionEmailSending || !rejectionEmailSubject.trim() || !rejectionEmailBody.trim()} className="flex-1">
+                <Mail className="h-4 w-4 mr-1.5" />
+                {rejectionEmailSending ? "Sending..." : "Send Email"}
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setPendingRejectionEmail(null)}>
+                Skip
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

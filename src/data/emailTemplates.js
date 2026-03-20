@@ -19,7 +19,7 @@ Would any of the following times work for you this week?
 Looking forward to connecting!
 
 Best,
-[Your name]`,
+{{sender_name}}`,
     createdAt: "2026-02-01",
   },
   {
@@ -40,7 +40,7 @@ I'm attaching the floor plan options and pricing we discussed. Please don't hesi
 [Write personal note here — mention something specific from the tour or their concerns]
 
 Best regards,
-[Your name]`,
+{{sender_name}}`,
     createdAt: "2026-02-05",
   },
   {
@@ -59,7 +59,7 @@ In the meantime, I thought you might find these resources helpful:
 Is there anything I can help with or any questions I can answer?
 
 Warm regards,
-[Your name]`,
+{{sender_name}}`,
     createdAt: "2026-02-08",
   },
   {
@@ -86,7 +86,7 @@ Wellness Corner
 We'd love for you and {{name}} to visit and experience our community firsthand. Reply to schedule a personal tour anytime.
 
 Warmly,
-[Your name]`,
+{{sender_name}}`,
     createdAt: "2026-02-10",
   },
   {
@@ -115,17 +115,39 @@ This is a wonderful opportunity to experience daily life in our community and me
 Please RSVP by replying to this email or calling us directly. We'd love to save a spot for you!
 
 Hope to see you there,
-[Your name]`,
+{{sender_name}}`,
     createdAt: "2026-02-11",
+  },
+  {
+    id: "t6",
+    name: "Rejection Notice",
+    subject: "Update regarding {{name}}'s care inquiry",
+    body: `Hi {{contact_person}},
+
+Thank you for reaching out to us about care options for {{name}}. We truly appreciate the time you took to explore what we have to offer.
+
+After careful consideration, we're not able to move forward with services for {{name}} at this time. We understand this may be disappointing, and we want you to know this decision was not made lightly.
+
+We encourage you to:
+- Reach out to us in the future if circumstances change
+- Contact your local Area Agency on Aging for additional resources
+- Explore other care providers who may better fit your needs
+
+We wish you and {{name}} all the best, and please don't hesitate to contact us if we can help in any way.
+
+Warm regards,
+{{sender_name}}`,
+    createdAt: "2026-03-01",
   },
 ];
 
-export function personalizeContent(body, lead) {
+export function personalizeContent(body, lead, senderName) {
   const contactName = lead.contactPerson === "Self" ? lead.name : lead.contactPerson;
   let text = body
     .replace(/\{\{name\}\}/g, lead.name || "")
     .replace(/\{\{contact_person\}\}/g, contactName || "")
-    .replace(/\{\{care_level\}\}/g, lead.careLevel || "");
+    .replace(/\{\{care_level\}\}/g, lead.careLevel || "")
+    .replace(/\{\{sender_name\}\}/g, senderName || "");
 
   return text.trim();
 }

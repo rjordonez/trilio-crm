@@ -22,10 +22,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
+import { defaultTemplates } from "@/data/emailTemplates";
 
 export default function SettingsPage({ alerts = [] }) {
   const { organization, leaveOrganization, refreshOrganization } = useAuth();
@@ -112,6 +114,46 @@ export default function SettingsPage({ alerts = [] }) {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
+  };
+
+  // Rejection email template (persisted in localStorage per org)
+  const storageKey = organization?.id ? `rejection_template_${organization.id}` : null;
+  const defaultRejection = defaultTemplates.find((t) => t.id === "t6");
+  const [editingTemplate, setEditingTemplate] = useState(false);
+  const [templateSubject, setTemplateSubject] = useState("");
+  const [templateBody, setTemplateBody] = useState("");
+
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (saved) {
+        setTemplateSubject(saved.subject);
+        setTemplateBody(saved.body);
+      } else {
+        setTemplateSubject(defaultRejection?.subject || "");
+        setTemplateBody(defaultRejection?.body || "");
+      }
+    } catch {
+      setTemplateSubject(defaultRejection?.subject || "");
+      setTemplateBody(defaultRejection?.body || "");
+    }
+  }, [storageKey]);
+
+  const handleSaveTemplate = () => {
+    if (!storageKey) return;
+    localStorage.setItem(storageKey, JSON.stringify({ subject: templateSubject, body: templateBody }));
+    setEditingTemplate(false);
+    toast({ title: "Template saved", description: "Rejection email template updated" });
+  };
+
+  const handleResetTemplate = () => {
+    if (!storageKey) return;
+    localStorage.removeItem(storageKey);
+    setTemplateSubject(defaultRejection?.subject || "");
+    setTemplateBody(defaultRejection?.body || "");
+    setEditingTemplate(false);
+    toast({ title: "Template reset", description: "Restored to default" });
   };
 
   const pendingMembers = members.filter(m => m.status === 'pending');
@@ -255,6 +297,51 @@ export default function SettingsPage({ alerts = [] }) {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+          </div>
+
+          {/* Rejection Email Template */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Rejection Email Template</h3>
+              </div>
+              {!editingTemplate ? (
+                <Button variant="outline" size="sm" onClick={() => setEditingTemplate(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveTemplate}>
+                    <Save className="h-3.5 w-3.5 mr-1" /> Save
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingTemplate(false)}>Cancel</Button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This email is sent when you reject a lead. Available tags: <code className="bg-muted px-1 rounded">{"{{name}}"}</code> <code className="bg-muted px-1 rounded">{"{{contact_person}}"}</code> <code className="bg-muted px-1 rounded">{"{{care_level}}"}</code> <code className="bg-muted px-1 rounded">{"{{sender_name}}"}</code>
+            </p>
+            {editingTemplate ? (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
+                  <Input value={templateSubject} onChange={(e) => setTemplateSubject(e.target.value)} className="text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Body</label>
+                  <Textarea value={templateBody} onChange={(e) => setTemplateBody(e.target.value)} className="min-h-[250px] text-sm font-mono" />
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleResetTemplate}>
+                  Reset to default
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
+                <p className="text-xs font-medium text-foreground">Subject: {templateSubject}</p>
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">{templateBody}</p>
               </div>
             )}
           </div>

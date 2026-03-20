@@ -11,7 +11,8 @@ import { supabase } from "@/lib/supabase";
 import { defaultTemplates, personalizeContent } from "@/data/emailTemplates";
 
 export default function EmailComposeDialog({ open, onOpenChange, name, email, lead, onEmailSent }) {
-  const { gmailConnected } = useAuth();
+  const { gmailConnected, user } = useAuth();
+  const senderName = user?.user_metadata?.full_name || user?.email || "";
   const { navigate } = useNavigation();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -26,12 +27,16 @@ export default function EmailComposeDialog({ open, onOpenChange, name, email, le
     if (!template) return;
 
     if (lead) {
-      setSubject(personalizeContent(template.subject, lead));
-      setBody(personalizeContent(template.body, lead));
+      setSubject(personalizeContent(template.subject, lead, senderName));
+      setBody(personalizeContent(template.body, lead, senderName));
     } else {
       // Basic merge: just replace name
-      setSubject(template.subject.replace(/\{\{name\}\}/g, name || "").replace(/\{\{contact_person\}\}/g, name || ""));
-      setBody(template.body.replace(/\{\{name\}\}/g, name || "").replace(/\{\{contact_person\}\}/g, name || ""));
+      let s = template.subject.replace(/\{\{name\}\}/g, name || "").replace(/\{\{contact_person\}\}/g, name || "");
+      let b = template.body.replace(/\{\{name\}\}/g, name || "").replace(/\{\{contact_person\}\}/g, name || "");
+      s = s.replace(/\{\{sender_name\}\}/g, senderName);
+      b = b.replace(/\{\{sender_name\}\}/g, senderName);
+      setSubject(s);
+      setBody(b);
     }
   };
 
