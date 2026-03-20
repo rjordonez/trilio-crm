@@ -461,7 +461,7 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, tasks = [], onAddTask, onUpdateTask, onDeleteTask }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, tasks = [], onAddTask, onUpdateTask, onDeleteTask, customFields = [] }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
@@ -590,19 +590,6 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
             <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
-            {onDelete && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onDelete(lead)}
-                    className="ml-auto p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom"><p>Delete</p></TooltipContent>
-              </Tooltip>
-            )}
             <EditableStageBadge
               stage={localStage || lead.stage}
               onChange={(newStage, rejectReason) => {
@@ -623,6 +610,19 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
                 onStageChange?.(lead.id, newStage, rejectReason);
               }}
             />
+            {onDelete && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onDelete(lead)}
+                    className="ml-auto p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom"><p>Delete</p></TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </DialogHeader>
 
@@ -635,7 +635,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </TabsList>
           <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
-            <EditableIntakeContent lead={lead} referrers={referrers} setLeads={setLeads} setReferrers={setReferrers} onSaveStatusChange={setSaveStatus} />
+            <EditableIntakeContent lead={lead} referrers={referrers} setLeads={setLeads} setReferrers={setReferrers} onSaveStatusChange={setSaveStatus} customFields={customFields} />
           </TabsContent>
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />

@@ -23,13 +23,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save } from "lucide-react";
+import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save, Plus, Trash2, RotateCcw, Columns3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
+import { useColumnConfig } from "@/hooks/useColumnConfig";
 import { defaultTemplates } from "@/data/emailTemplates";
 
-export default function SettingsPage({ alerts = [] }) {
+export default function SettingsPage({ alerts = [], customFields = [], onAddField, onRemoveField, onUpdateField, orgSettings, saveOrgSettings }) {
   const { organization, leaveOrganization, refreshOrganization } = useAuth();
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -37,6 +38,15 @@ export default function SettingsPage({ alerts = [] }) {
 
   const isAdmin = organization?.role === 'admin' || organization?.role === 'owner';
   const isOwner = organization?.role === 'owner';
+
+  const { allColumns, visibleIds, toggleColumn, resetToDefaults } = useColumnConfig(
+    orgSettings?.column_config || null,
+    customFields,
+    (ids) => saveOrgSettings?.({ column_config: ids })
+  );
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState("text");
+  const [newFieldOptions, setNewFieldOptions] = useState("");
 
   const fetchMembers = useCallback(async () => {
     if (!organization?.id) return;
@@ -154,6 +164,16 @@ export default function SettingsPage({ alerts = [] }) {
     setTemplateBody(defaultRejection?.body || "");
     setEditingTemplate(false);
     toast({ title: "Template reset", description: "Restored to default" });
+  };
+
+  const handleAddField = () => {
+    if (!newFieldLabel.trim()) return;
+    const options = newFieldType === "select" ? newFieldOptions.split(",").map(o => o.trim()).filter(Boolean) : [];
+    onAddField?.(newFieldLabel.trim(), newFieldType, options);
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setNewFieldOptions("");
+    toast({ title: "Field added", description: `"${newFieldLabel.trim()}" field created` });
   };
 
   const pendingMembers = members.filter(m => m.status === 'pending');
@@ -344,6 +364,84 @@ export default function SettingsPage({ alerts = [] }) {
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">{templateBody}</p>
               </div>
             )}
+          </div>
+
+          {/* Custom Fields */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
+            <div className="flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Custom Fields</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Add custom fields to track additional lead data. Values are stored per lead.
+            </p>
+
+            {/* Existing fields list */}
+            {customFields.length > 0 && (
+              <div className="space-y-1">
+                {customFields.map((field) => (
+                  <div key={field.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-muted/30">
+                    <span className="text-sm text-foreground flex-1">{field.label}</span>
+                    <Badge variant="secondary" className="text-[10px]">{field.type}</Badge>
+                    {field.type === "select" && field.options?.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{field.options.length} options</span>
+                    )}
+                    <button onClick={() => { onRemoveField?.(field.id); toast({ title: "Field removed" }); }} className="p-0.5 rounded hover:bg-destructive/10 transition-colors">
+                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add field form */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="flex gap-2">
+                <Input placeholder="Field name..." value={newFieldLabel} onChange={(e) => setNewFieldLabel(e.target.value)} className="flex-1 h-8 text-xs" />
+                <select value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs w-28">
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="date">Date</option>
+                  <option value="select">Dropdown</option>
+                </select>
+              </div>
+              {newFieldType === "select" && (
+                <Input placeholder="Options (comma separated)..." value={newFieldOptions} onChange={(e) => setNewFieldOptions(e.target.value)} className="h-8 text-xs" />
+              )}
+              <Button size="sm" onClick={handleAddField} disabled={!newFieldLabel.trim()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Field
+              </Button>
+            </div>
+          </div>
+
+          {/* Table Columns */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Columns3 className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Table Columns</h3>
+              </div>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { resetToDefaults(); toast({ title: "Columns reset" }); }}>
+                <RotateCcw className="h-3 w-3 mr-1" /> Reset
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Choose which columns appear in the leads table.</p>
+            <div className="space-y-0.5">
+              {allColumns.map((col) => (
+                <label key={col.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleIds.includes(col.id)}
+                    disabled={col.alwaysVisible}
+                    onChange={() => toggleColumn(col.id)}
+                    className="rounded border-border"
+                  />
+                  <span className={`text-sm ${col.alwaysVisible ? "text-muted-foreground" : "text-foreground"}`}>{col.label}</span>
+                  {col.isCustom && <span className="text-[10px] text-muted-foreground">(custom)</span>}
+                  {col.alwaysVisible && <span className="text-[10px] text-muted-foreground">(always visible)</span>}
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Leave Organization */}

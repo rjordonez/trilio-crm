@@ -195,7 +195,7 @@ function InlineSelect({ label, value, options, onSave }) {
   );
 }
 
-export default function EditableIntakeContent({ lead, referrers = [], setLeads, setReferrers, onSaveStatusChange }) {
+export default function EditableIntakeContent({ lead, referrers = [], setLeads, setReferrers, onSaveStatusChange, customFields = [] }) {
   const n = lead.intakeNote || {};
 
   // Find linked referrer
@@ -316,6 +316,7 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
       case "timeline": if (n) n.timeline = val; lead.timeline = val; break;
       case "budget": if (n) n.budgetFinancial = Array.isArray(val) ? val : [val]; lead.budget = Array.isArray(val) ? val.join(". ") : val; break;
       case "personalNotes": lead.personalNotes = val; break;
+      default: lead[key] = val; break;
     }
     debouncedSave();
   };
@@ -426,6 +427,36 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
 
       {/* ── Personal Notes ── */}
       <InlineMultiLine label="Personal Notes" value={fields.personalNotes} onSave={(v) => { const text = typeof v === "string" ? v : Array.isArray(v) ? v.join(". ") : ""; update("personalNotes", text); if (n) n.situationSummary = text ? [text] : []; }} sectionType="single" />
+
+      {/* ── Custom Fields ── */}
+      {customFields.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Custom Fields</h4>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+            {customFields.map((field) => {
+              if (field.type === "select") {
+                return (
+                  <InlineSelect
+                    key={field.id}
+                    label={field.label}
+                    value={lead[field.id] || ""}
+                    options={field.options.map((o) => ({ value: o, label: o }))}
+                    onSave={(val) => update(field.id, val)}
+                  />
+                );
+              }
+              return (
+                <InlineField
+                  key={field.id}
+                  label={field.label}
+                  value={lead[field.id] || ""}
+                  onSave={(val) => update(field.id, val)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

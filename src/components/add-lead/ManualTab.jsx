@@ -41,7 +41,7 @@ const initialForm = {
   notes: "",
 };
 
-export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded, aiPrefill, isProcessing }) {
+export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded, aiPrefill, isProcessing, customFields = [] }) {
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "Unknown";
   const [form, setForm] = useState(initialForm);
@@ -446,6 +446,37 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         <Label className="text-xs">Notes</Label>
         <Textarea placeholder="Caregiver preference, family dynamics, decision makers, concerns..." className="text-sm min-h-[80px]" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
       </div>
+
+      {/* Custom Fields */}
+      {customFields.length > 0 && (
+        <div className="space-y-3 pt-3 border-t border-border">
+          <h4 className="text-sm font-medium text-foreground">Additional Fields</h4>
+          {customFields.map((field) => (
+            <div key={field.id}>
+              <label className="text-xs text-muted-foreground mb-1 block">{field.label}</label>
+              {field.type === "select" ? (
+                <select
+                  value={form[field.id] || ""}
+                  onChange={(e) => set(field.id, e.target.value)}
+                  className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">Select...</option>
+                  {field.options.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                  value={form[field.id] || ""}
+                  onChange={(e) => set(field.id, e.target.value)}
+                  placeholder={field.label}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       </fieldset>
 

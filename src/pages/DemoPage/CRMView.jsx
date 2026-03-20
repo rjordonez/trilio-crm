@@ -22,6 +22,8 @@ import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
 import { fetchTasks, createTask, updateTask, deleteTask } from "@/services/supabaseTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLeadAlerts } from "@/hooks/useLeadAlerts";
+import { useCustomFields } from "@/hooks/useCustomFields";
+import { supabase } from "@/lib/supabase";
 import '../../crm.css';
 
 const queryClient = new QueryClient();
@@ -37,6 +39,23 @@ function CRMView() {
   const [dataLoading, setDataLoading] = useState(true);
   const isMobile = useIsMobile();
   const orgId = organization?.id;
+  const [orgSettings, setOrgSettings] = useState(null);
+
+  // Save org settings to Supabase
+  const saveOrgSettings = useCallback(async (updates) => {
+    if (!orgId) return;
+    const merged = { ...(orgSettings || {}), ...updates };
+    setOrgSettings(merged);
+    supabase.from('organizations').update({ settings: merged }).eq('id', orgId).then(({ error }) => {
+      if (error) console.error('Failed to save org settings:', error);
+    });
+  }, [orgId, orgSettings]);
+
+  const { customFields, addField, removeField, updateField: updateCustomField, setFields } = useCustomFields(
+    orgSettings?.custom_fields || [],
+    (fields) => saveOrgSettings({ custom_fields: fields })
+  );
+
   const allAlerts = useLeadAlerts(leads);
   const [dismissedAlertIds, setDismissedAlertIds] = useState(new Set());
   const alerts = allAlerts.filter(a => !dismissedAlertIds.has(a.id));
@@ -60,11 +79,19 @@ function CRMView() {
   useEffect(() => {
     if (!user || !orgId) return;
     setDataLoading(true);
-    Promise.all([fetchLeads(orgId), fetchReferrers(orgId), fetchTasks(orgId)])
-      .then(([fetchedLeads, fetchedReferrers, fetchedTasks]) => {
+    Promise.all([
+      fetchLeads(orgId),
+      fetchReferrers(orgId),
+      fetchTasks(orgId),
+      supabase.from('organizations').select('settings').eq('id', orgId).single(),
+    ])
+      .then(([fetchedLeads, fetchedReferrers, fetchedTasks, { data: orgRow }]) => {
         setLeads(fetchedLeads);
         setReferrers(fetchedReferrers);
         setTasks(fetchedTasks);
+        const settings = orgRow?.settings || {};
+        setOrgSettings(settings);
+        if (settings.custom_fields) setFields(settings.custom_fields);
       })
       .catch(console.error)
       .finally(() => setDataLoading(false));
@@ -148,6 +175,9 @@ function CRMView() {
             onAddTask={handleAddTask}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
+            customFields={customFields}
+            orgSettings={orgSettings}
+            saveOrgSettings={saveOrgSettings}
           />
         );
       case 'referrers':
@@ -161,7 +191,7 @@ function CRMView() {
       case 'integrations':
         return <IntegrationsPage alerts={alerts} />;
       case 'settings':
-        return <SettingsPage alerts={alerts} />;
+        return <SettingsPage alerts={alerts} customFields={customFields} onAddField={addField} onRemoveField={removeField} onUpdateField={updateCustomField} orgSettings={orgSettings} saveOrgSettings={saveOrgSettings} />;
       default:
         return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
     }

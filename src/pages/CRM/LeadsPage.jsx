@@ -6,7 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search, Columns3 } from "lucide-react";
+import { useColumnConfig, BUILT_IN_COLUMNS } from "@/hooks/useColumnConfig";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -257,10 +258,62 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
   );
 }
 
-export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask }) {
+function ColumnToggle({ allColumns, visibleIds, onToggle, onReset }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/80`}
+      >
+        <Columns3 className="h-3.5 w-3.5" /> Columns
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 rounded-md border border-border bg-popover shadow-lg py-1 min-w-[200px] max-h-[60vh] overflow-y-auto">
+          {allColumns.map((col) => (
+            <label
+              key={col.id}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={visibleIds.includes(col.id)}
+                disabled={col.alwaysVisible}
+                onChange={() => onToggle(col.id)}
+                className="rounded border-border"
+              />
+              <span className={col.alwaysVisible ? "text-muted-foreground" : "text-foreground"}>{col.label}</span>
+              {col.isCustom && <span className="text-[10px] text-muted-foreground">(custom)</span>}
+            </label>
+          ))}
+          <div className="border-t border-border mt-1 pt-1 px-3 py-1">
+            <button onClick={onReset} className="text-[10px] text-primary hover:underline">Reset to default</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask, customFields = [], orgSettings, saveOrgSettings }) {
   const { user, organization, gmailConnected } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
+  const { allColumns, visibleColumns, visibleIds, toggleColumn, resetToDefaults } = useColumnConfig(
+    orgSettings?.column_config || null,
+    customFields,
+    (ids) => saveOrgSettings?.({ column_config: ids })
+  );
   const isMobile = useIsMobile();
   const [view, setView] = useState("table");
   const [selectedLead, setSelectedLead] = useState(null);
@@ -298,12 +351,13 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
       if (filters.salesRep !== "all" && l.salesRep !== filters.salesRep) return false;
       if (filters.score !== "all" && l.score !== filters.score) return false;
       if (q) {
-        const searchable = [l.name, l.contactPerson, l.contactPhone, l.contactEmail, l.careLevel, l.source, l.salesRep, l.referredBy, l.referPartner].filter(Boolean).join(" ").toLowerCase();
+        const customValues = customFields.map(f => l[f.id]).filter(Boolean).join(" ");
+        const searchable = [l.name, l.contactPerson, l.contactPhone, l.contactEmail, l.careLevel, l.source, l.salesRep, l.referredBy, l.referPartner, customValues].filter(Boolean).join(" ").toLowerCase();
         if (!searchable.includes(q)) return false;
       }
       return true;
     });
-  }, [leads, filters, searchQuery]);
+  }, [leads, filters, searchQuery, customFields]);
 
   const kanbanLeads = useMemo(() => filteredLeads.filter((l) => l.stage !== "rejected"), [filteredLeads]);
   const rejectedLeads = useMemo(() => filteredLeads.filter((l) => l.stage === "rejected"), [filteredLeads]);
@@ -605,6 +659,43 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
     </div>
   );
 
+  function renderCell(col, lead) {
+    switch (col.renderType) {
+      case "name":
+        return <span className="font-medium text-foreground">{lead.name}</span>;
+      case "scoreBadge":
+        return <span className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize whitespace-nowrap ${scoreColors[lead.score] || ""}`}>{lead.score}</span>;
+      case "stageProgress":
+        if (lead.stage === "rejected") {
+          return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-destructive/10 text-destructive whitespace-nowrap">Rejected</span>;
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <Progress value={stageProgress[lead.stage]} className="h-2 w-16" />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{stageLabel[lead.stage]}</span>
+          </div>
+        );
+      case "careBadge":
+        return <span className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap ${careLevelColors[lead.careLevel]}`}>{lead.careLevel}</span>;
+      case "contact":
+        return <span className="text-muted-foreground whitespace-nowrap">{lead.contactPerson}{lead.contactRelation ? ` (${lead.contactRelation})` : ""}</span>;
+      case "date":
+        return <span className="text-muted-foreground whitespace-nowrap">{lead[col.dataKey] ? formatDate(lead[col.dataKey]) : "—"}</span>;
+      case "relativeDate":
+        return <span className="text-muted-foreground whitespace-nowrap">{daysAgoText(lead[col.dataKey])}</span>;
+      case "text":
+        return <span className="text-muted-foreground whitespace-nowrap">{lead[col.dataKey || col.id] || ""}</span>;
+      case "customText":
+      case "customNumber":
+      case "customSelect":
+        return <span className="text-muted-foreground whitespace-nowrap">{lead[col.id] || "—"}</span>;
+      case "customDate":
+        return <span className="text-muted-foreground whitespace-nowrap">{lead[col.id] ? formatDate(lead[col.id]) : "—"}</span>;
+      default:
+        return <span className="text-muted-foreground whitespace-nowrap">{lead[col.dataKey || col.id] || "—"}</span>;
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <TopBar
@@ -635,6 +726,9 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           >
             <TableIcon className="h-3.5 w-3.5" /> Table
           </button>
+        )}
+        {view === "table" && !isMobile && (
+          <ColumnToggle allColumns={allColumns} visibleIds={visibleIds} onToggle={toggleColumn} onReset={resetToDefaults} />
         )}
         <div className="ml-auto relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -780,56 +874,30 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[150px] sticky left-0 bg-card z-10 whitespace-nowrap">Prospect Name</TableHead>
-                    <TableHead className="min-w-[90px] whitespace-nowrap">
-                      <HeaderFilter label="Score" value={filters.score} options={scoreOptions} onChange={(v) => setFilters((f) => ({ ...f, score: v }))} />
-                    </TableHead>
-                    <TableHead className="min-w-[170px] whitespace-nowrap">
-                      <HeaderFilter label="Stage" value={filters.stage} options={[...stages.map((s) => s.key), "rejected"]} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
-                    </TableHead>
-                    <TableHead className="min-w-[110px] whitespace-nowrap">
-                      <HeaderFilter label="Source" value={filters.source} options={sourceOptions} onChange={(v) => setFilters((f) => ({ ...f, source: v }))} />
-                    </TableHead>
-                    <TableHead className="min-w-[130px] whitespace-nowrap">
-                      <HeaderFilter label="Care Type" value={filters.careLevel} options={careOptions} onChange={(v) => setFilters((f) => ({ ...f, careLevel: v }))} />
-                    </TableHead>
-                    <TableHead className="min-w-[110px] whitespace-nowrap">
-                      <HeaderFilter label="Assign To" value={filters.salesRep} options={salesRepOptions} onChange={(v) => setFilters((f) => ({ ...f, salesRep: v }))} />
-                    </TableHead>
-                    <TableHead className="min-w-[120px] whitespace-nowrap">Contact</TableHead>
-                    <TableHead className="min-w-[95px] whitespace-nowrap">Inquiry Date</TableHead>
-                    <TableHead className="min-w-[95px] whitespace-nowrap">Last Contacted</TableHead>
-                    <TableHead className="min-w-[180px] whitespace-nowrap">Next Activity</TableHead>
+                    {visibleColumns.map((col) => (
+                      <TableHead key={col.id} className={`whitespace-nowrap ${col.sticky ? "sticky left-0 bg-card z-10" : ""}`} style={{ minWidth: col.minWidth }}>
+                        {col.filterable && col.filterKey ? (
+                          <HeaderFilter
+                            label={col.label}
+                            value={filters[col.filterKey] || "all"}
+                            options={col.dynamicOptions ? salesRepOptions : col.filterOptions || []}
+                            onChange={(v) => setFilters((f) => ({ ...f, [col.filterKey]: v }))}
+                          />
+                        ) : (
+                          col.label
+                        )}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => (
                     <TableRow key={lead.id} className={`cursor-pointer ${lead.stage === "rejected" ? "opacity-60" : ""}`} onClick={() => setSelectedLead(lead)}>
-                      <TableCell className="font-medium text-foreground sticky left-0 bg-card z-10 whitespace-nowrap">{lead.name}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize whitespace-nowrap ${scoreColors[lead.score] || ""}`}>{lead.score}</span>
-                      </TableCell>
-                      <TableCell>
-                        {lead.stage === "rejected" ? (
-                          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-destructive/10 text-destructive whitespace-nowrap">Rejected</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Progress value={stageProgress[lead.stage]} className="h-2 w-16" />
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">{stageLabel[lead.stage]}</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">{lead.source}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap ${careLevelColors[lead.careLevel]}`}>{lead.careLevel}</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">{lead.salesRep}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {lead.contactPerson}{lead.contactRelation ? ` (${lead.contactRelation})` : ""}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(lead.inquiryDate)}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">{daysAgoText(lead.lastContactDate)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{lead.nextActivity}</TableCell>
+                      {visibleColumns.map((col) => (
+                        <TableCell key={col.id} className={col.sticky ? "sticky left-0 bg-card z-10 whitespace-nowrap" : ""}>
+                          {renderCell(col, lead)}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -855,9 +923,10 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onAddTask={onAddTask}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
+        customFields={customFields}
       />
 
-      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} />
+      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} customFields={customFields} />
 
       <ImportCSVDialog
         open={importOpen}
