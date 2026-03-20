@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   LayoutDashboard,
   UserPlus,
@@ -21,7 +22,18 @@ const bottomNavItems = [
   { id: "settings", icon: Settings, label: "Settings" },
 ];
 
-export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigate }) {
+export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigate, tasks = [] }) {
+  const today = new Date().toISOString().split("T")[0];
+  const pendingToday = useMemo(
+    () => tasks.filter((t) => t.status === "pending" && t.due_date <= today),
+    [tasks, today]
+  );
+  const hasOverdue = useMemo(
+    () => tasks.some((t) => t.status === "pending" && t.due_date < today),
+    [tasks, today]
+  );
+  const taskCount = pendingToday.length;
+
   return (
     <aside
       className={`flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ${
@@ -57,6 +69,7 @@ export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigat
       <nav className="mt-3 flex-1 space-y-0.5 px-2">
         {navItems.map(({ id, icon: Icon, label }) => {
           const active = currentPage === id;
+          const showBadge = id === "dashboard" && taskCount > 0;
           return (
             <button
               key={id}
@@ -67,8 +80,24 @@ export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigat
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
               } ${collapsed ? "justify-center" : ""}`}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{label}</span>}
+              <div className="relative shrink-0">
+                <Icon className="h-4 w-4" />
+                {showBadge && collapsed && (
+                  <span className={`absolute -top-1.5 -right-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-white ${hasOverdue ? "bg-destructive" : "bg-primary"}`}>
+                    {taskCount}
+                  </span>
+                )}
+              </div>
+              {!collapsed && (
+                <>
+                  <span>{label}</span>
+                  {showBadge && (
+                    <span className={`ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ${hasOverdue ? "bg-destructive" : "bg-primary"}`}>
+                      {taskCount}
+                    </span>
+                  )}
+                </>
+              )}
             </button>
           );
         })}

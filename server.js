@@ -27,15 +27,41 @@ async function getAuthUser(req) {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages, leadsContext } = req.body;
+    const { messages, leadsContext, referrersContext, tasksContext } = req.body;
     console.log('Received request - Messages:', JSON.stringify(messages, null, 2));
     console.log('Leads context count:', leadsContext?.length);
+    console.log('Tasks context count:', tasksContext?.length);
 
-    const systemMessage = `You are a helpful AI assistant for a senior living CRM system. You have access to the following leads data:
+    const systemMessage = `You are Trilio, an AI assistant for a home care CRM system. You have access to all of the user's data.
 
+LEADS DATA (${leadsContext?.length || 0} leads):
 ${JSON.stringify(leadsContext, null, 2)}
 
-Help the user with questions about their leads pipeline, provide insights, and suggest next steps. Be concise and helpful. When discussing leads, use their names and provide specific details from the data.`;
+REFERRAL PARTNERS DATA (${referrersContext?.length || 0} partners):
+${JSON.stringify(referrersContext, null, 2)}
+
+PENDING TASKS (${tasksContext?.length || 0} tasks):
+${JSON.stringify(tasksContext, null, 2)}
+
+You can help the user with:
+- Questions about their leads pipeline (stages, scores, care types, budgets, timelines)
+- Referral partner information and performance
+- Follow-up recommendations based on last contact dates
+- Insights on conversion rates and pipeline health
+- Suggestions for next steps with specific leads
+- Summarizing lead details and intake notes
+- Reviewing and discussing their task list and upcoming follow-ups
+
+You can manage tasks for the user. When they ask you to:
+- Create a task: respond with the task details and include a JSON block: {"action":"create_task","title":"...","dueDate":"YYYY-MM-DD","priority":"normal"}
+  - If the task is about a specific lead, add "leadId":"<uuid>" to the JSON block
+  - If the task is general (not about a specific lead), omit leadId
+- List tasks: summarize their pending tasks from the context data
+- Complete a task: respond confirming and include: {"action":"complete_task","taskId":"..."}
+
+Always confirm the action in natural language alongside the JSON block.
+
+Be concise, specific, and use actual names and data from the records. Format responses with markdown for readability.`;
 
     // Convert UIMessage format to ModelMessage format
     const coreMessages = messages.map(msg => ({

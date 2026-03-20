@@ -255,7 +255,7 @@ function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile })
   );
 }
 
-export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [] }) {
+export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask }) {
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
@@ -790,6 +790,10 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         referrers={referrers}
         setLeads={setLeads}
         setReferrers={setReferrers}
+        tasks={tasks}
+        onAddTask={onAddTask}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
       />
 
       <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} />

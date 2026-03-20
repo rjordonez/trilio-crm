@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Users, Handshake, LayoutGrid, Bot } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
+import { fetchTasks, createTask, updateTask, deleteTask } from "@/services/supabaseTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLeadAlerts } from "@/hooks/useLeadAlerts";
 import '../../crm.css';
@@ -31,6 +32,7 @@ function CRMView() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [leads, setLeads] = useState([]);
   const [referrers, setReferrers] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [autoOpenLeadId, setAutoOpenLeadId] = useState(null);
   const [dataLoading, setDataLoading] = useState(true);
   const isMobile = useIsMobile();
@@ -58,10 +60,11 @@ function CRMView() {
   useEffect(() => {
     if (!user || !orgId) return;
     setDataLoading(true);
-    Promise.all([fetchLeads(orgId), fetchReferrers(orgId)])
-      .then(([fetchedLeads, fetchedReferrers]) => {
+    Promise.all([fetchLeads(orgId), fetchReferrers(orgId), fetchTasks(orgId)])
+      .then(([fetchedLeads, fetchedReferrers, fetchedTasks]) => {
         setLeads(fetchedLeads);
         setReferrers(fetchedReferrers);
+        setTasks(fetchedTasks);
       })
       .catch(console.error)
       .finally(() => setDataLoading(false));
@@ -96,10 +99,39 @@ function CRMView() {
     setReferrers((prev) => [...prev, saved]);
   }, []);
 
+  const handleAddTask = useCallback(async (taskData) => {
+    try {
+      const saved = await createTask(taskData, orgId);
+      setTasks((prev) => [...prev, saved]);
+      return saved;
+    } catch (err) {
+      console.error('Failed to create task:', err);
+    }
+  }, [orgId]);
+
+  const handleUpdateTask = useCallback(async (id, updates) => {
+    try {
+      const saved = await updateTask(id, updates);
+      setTasks((prev) => prev.map((t) => t.id === id ? saved : t));
+      return saved;
+    } catch (err) {
+      console.error('Failed to update task:', err);
+    }
+  }, []);
+
+  const handleDeleteTask = useCallback(async (id) => {
+    try {
+      await deleteTask(id);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+    }
+  }, []);
+
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard leads={leads} alerts={alerts} />;
+        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
       case 'leads':
         return (
           <LeadsPage
@@ -112,6 +144,10 @@ function CRMView() {
             setReferrers={setReferrers}
             onReferrerAdded={handleReferrerAdded}
             alerts={alerts}
+            tasks={tasks}
+            onAddTask={handleAddTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
           />
         );
       case 'referrers':
@@ -121,13 +157,13 @@ function CRMView() {
       case 'follow-up':
         return <FollowUpPage alerts={alerts} />;
       case 'chatbot':
-        return <ChatbotPage alerts={alerts} />;
+        return <ChatbotPage alerts={alerts} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} />;
       case 'integrations':
         return <IntegrationsPage alerts={alerts} />;
       case 'settings':
         return <SettingsPage alerts={alerts} />;
       default:
-        return <Dashboard leads={leads} alerts={alerts} />;
+        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
     }
   };
 
@@ -135,7 +171,7 @@ function CRMView() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={200}>
         <NavigationProvider navigate={setCurrentPage} dismissAlert={dismissAlert} clearAllAlerts={clearAllAlerts}>
-        <ChatProvider leads={leads} referrers={referrers}>
+        <ChatProvider leads={leads} referrers={referrers} tasks={tasks}>
           <Toaster />
           <Sonner />
           <div className="flex h-screen overflow-hidden bg-background">
@@ -145,6 +181,7 @@ function CRMView() {
                 onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
                 currentPage={currentPage}
                 onNavigate={setCurrentPage}
+                tasks={tasks}
               />
             )}
             <main className={`flex-1 overflow-auto ${isMobile ? "pb-16" : ""}`}>

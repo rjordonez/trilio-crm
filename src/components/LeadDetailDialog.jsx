@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check } from "lucide-react";
+import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check, CheckSquare } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { toast } from "@/hooks/use-toast";
@@ -269,6 +270,111 @@ function TimelineContent({ interactions, onAddNote, onUpdateEntry, onDeleteEntry
   );
 }
 
+const priorityDot = { high: "bg-destructive", normal: "bg-warning", low: "bg-muted-foreground/40" };
+
+function formatTaskDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function TasksTabContent({ lead, tasks = [], onAddTask, onUpdateTask, onDeleteTask }) {
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().split("T")[0]);
+  const [priority, setPriority] = useState("normal");
+
+  const leadTasks = tasks.filter((t) => t.lead_id === lead?.id);
+  const pending = leadTasks.filter((t) => t.status === "pending").sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const done = leadTasks.filter((t) => t.status === "done");
+  const today = new Date().toISOString().split("T")[0];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    await onAddTask?.({ leadId: lead.id, title: title.trim(), dueDate, priority });
+    setTitle("");
+    setDueDate(new Date().toISOString().split("T")[0]);
+    setPriority("normal");
+    setShowForm(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      {!showForm && (
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setShowForm(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Task
+        </Button>
+      )}
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="p-3 rounded-md border border-dashed border-border bg-muted/30 space-y-2">
+          <Input placeholder="Task title..." value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 text-xs" autoFocus />
+          <div className="flex gap-2">
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs" />
+            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs w-24">
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={!title.trim()}>Add</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </form>
+      )}
+
+      {pending.length === 0 && done.length === 0 && !showForm && (
+        <p className="text-sm text-muted-foreground text-center py-4">No tasks yet</p>
+      )}
+
+      {pending.map((task) => {
+        const isOverdue = task.due_date < today;
+        return (
+          <div key={task.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors group">
+            <button
+              onClick={() => onUpdateTask?.(task.id, { status: "done" })}
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border hover:border-primary transition-colors"
+            />
+            <span className="text-sm text-foreground flex-1 truncate">{task.title}</span>
+            <span className={`text-xs whitespace-nowrap ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+              {formatTaskDate(task.due_date)}
+            </span>
+            <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[task.priority] || priorityDot.normal}`} />
+            <button
+              onClick={() => onDeleteTask?.(task.id)}
+              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
+            >
+              <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+            </button>
+          </div>
+        );
+      })}
+
+      {done.length > 0 && (
+        <div className="pt-2 border-t border-border">
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">Completed</p>
+          {done.map((task) => (
+            <div key={task.id} className="flex items-center gap-2 py-1 px-2 opacity-50 group">
+              <button
+                onClick={() => onUpdateTask?.(task.id, { status: "pending" })}
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-primary bg-primary/10 text-primary text-xs"
+              >✓</button>
+              <span className="text-sm text-foreground flex-1 truncate line-through">{task.title}</span>
+              <button
+                onClick={() => onDeleteTask?.(task.id)}
+                className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
+              >
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const allStages = [
   { key: "inquiry", label: "Inquiry" },
   { key: "assessment_scheduled", label: "Assessment Scheduled" },
@@ -355,7 +461,7 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, tasks = [], onAddTask, onUpdateTask, onDeleteTask }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
@@ -390,7 +496,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
   // Merge: local (unsaved optimistic) + db (persisted) + mock generated, oldest first
   const interactions = lead
-    ? [...localInteractions, ...dbInteractions, ...lead.interactions].sort((a, b) => new Date(b.date) - new Date(a.date))
+    ? [...localInteractions, ...dbInteractions, ...(lead.interactions || [])].sort((a, b) => new Date(b.date) - new Date(a.date))
     : [];
 
   if (!lead) return null;
@@ -522,9 +628,10 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
 
         <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
-          <TabsList className="w-full grid grid-cols-2 shrink-0">
+          <TabsList className="w-full grid grid-cols-3 shrink-0">
             <TabsTrigger value="intake">☎️ Intake</TabsTrigger>
             <TabsTrigger value="timeline">📋 Activity Log</TabsTrigger>
+            <TabsTrigger value="tasks">✅ Tasks</TabsTrigger>
           </TabsList>
           <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
@@ -532,6 +639,9 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </TabsContent>
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />
+          </TabsContent>
+          <TabsContent value="tasks" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
+            <TasksTabContent lead={lead} tasks={tasks} onAddTask={onAddTask} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} />
           </TabsContent>
         </Tabs>
       </DialogContent>

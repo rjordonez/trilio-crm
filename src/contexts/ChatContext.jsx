@@ -4,9 +4,10 @@ import { DefaultChatTransport } from "ai";
 
 const ChatContext = createContext(null);
 
-export function ChatProvider({ leads, referrers, children }) {
+export function ChatProvider({ leads, referrers, tasks, children }) {
   const allLeads = leads || [];
   const allReferrers = referrers || [];
+  const allTasks = tasks || [];
   const [input, setInput] = useState("");
 
   const leadsContext = allLeads.map((lead) => ({
@@ -46,13 +47,26 @@ export function ChatProvider({ leads, referrers, children }) {
     notes: r.notes,
   }));
 
-  const contextRef = useRef({ leads: leadsContext, referrers: referrersContext });
-  contextRef.current = { leads: leadsContext, referrers: referrersContext };
+  const tasksContext = allTasks.filter((t) => t.status === "pending").map((t) => {
+    const lead = allLeads.find((l) => l.id === t.lead_id);
+    return {
+      id: t.id,
+      title: t.title,
+      leadName: lead?.name || "Unknown",
+      leadId: t.lead_id,
+      dueDate: t.due_date,
+      priority: t.priority,
+      status: t.status,
+    };
+  });
+
+  const contextRef = useRef({ leads: leadsContext, referrers: referrersContext, tasks: tasksContext });
+  contextRef.current = { leads: leadsContext, referrers: referrersContext, tasks: tasksContext };
 
   const { messages, sendMessage, status, error, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: () => ({ leadsContext: contextRef.current.leads, referrersContext: contextRef.current.referrers }),
+      body: () => ({ leadsContext: contextRef.current.leads, referrersContext: contextRef.current.referrers, tasksContext: contextRef.current.tasks }),
     }),
     onFinish: (options) => {
       console.log("Message finished:", options.message);
