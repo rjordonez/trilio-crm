@@ -23,11 +23,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save, Plus, Trash2, RotateCcw, Columns3 } from "lucide-react";
+import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save } from "lucide-react";
+// import { Plus, Trash2, RotateCcw, Columns3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
-import { useColumnConfig } from "@/hooks/useColumnConfig";
+// import { useColumnConfig } from "@/hooks/useColumnConfig";
 import { defaultTemplates } from "@/data/emailTemplates";
 
 export default function SettingsPage({ alerts = [], customFields = [], onAddField, onRemoveField, onUpdateField, orgSettings, saveOrgSettings }) {
@@ -39,14 +40,18 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
   const isAdmin = organization?.role === 'admin' || organization?.role === 'owner';
   const isOwner = organization?.role === 'owner';
 
+  /* COMMENTED OUT - useColumnConfig hook
   const { allColumns, visibleIds, toggleColumn, resetToDefaults } = useColumnConfig(
     orgSettings?.column_config || null,
     customFields,
     (ids) => saveOrgSettings?.({ column_config: ids })
   );
+  */
+  /* COMMENTED OUT - Custom field form state
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState("text");
   const [newFieldOptions, setNewFieldOptions] = useState("");
+  */
 
   const fetchMembers = useCallback(async () => {
     if (!organization?.id) return;
@@ -166,6 +171,7 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
     toast({ title: "Template reset", description: "Restored to default" });
   };
 
+  /* COMMENTED OUT - handleAddField function
   const handleAddField = () => {
     if (!newFieldLabel.trim()) return;
     const options = newFieldType === "select" ? newFieldOptions.split(",").map(o => o.trim()).filter(Boolean) : [];
@@ -175,6 +181,7 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
     setNewFieldOptions("");
     toast({ title: "Field added", description: `"${newFieldLabel.trim()}" field created` });
   };
+  */
 
   const pendingMembers = members.filter(m => m.status === 'pending');
   const activeMembers = members.filter(m => m.status === 'active');
@@ -366,7 +373,7 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
             )}
           </div>
 
-          {/* Custom Fields */}
+          {/* COMMENTED OUT - Custom Fields section
           <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" />
@@ -376,7 +383,6 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
               Add custom fields to track additional lead data. Values are stored per lead.
             </p>
 
-            {/* Existing fields list */}
             {customFields.length > 0 && (
               <div className="space-y-1">
                 {customFields.map((field) => (
@@ -394,7 +400,6 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
               </div>
             )}
 
-            {/* Add field form */}
             <div className="space-y-2 pt-2 border-t border-border">
               <div className="flex gap-2">
                 <Input placeholder="Field name..." value={newFieldLabel} onChange={(e) => setNewFieldLabel(e.target.value)} className="flex-1 h-8 text-xs" />
@@ -413,8 +418,9 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
               </Button>
             </div>
           </div>
+          */}
 
-          {/* Table Columns */}
+          {/* COMMENTED OUT - Table Columns section
           <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -443,6 +449,7 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
               ))}
             </div>
           </div>
+          */}
 
           {/* Leave Organization */}
           <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm">

@@ -4,9 +4,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Bot, User, Square, CheckSquare, X, Check } from "lucide-react";
+import { Send, Loader2, Bot, User, Square } from "lucide-react";
 import Markdown from "react-markdown";
 
+/* COMMENTED OUT - Task action parsing
 function parseTaskActions(text) {
   const actions = [];
   const regex = /\{[^{}]*"action"\s*:\s*"(create_task|complete_task)"[^{}]*\}/g;
@@ -16,16 +17,17 @@ function parseTaskActions(text) {
   }
   return actions;
 }
+*/
 
-export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
+export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */ }) {
   const messagesEndRef = useRef(null);
   const { messages, sendMessage, stop, status, input, setInput, leadsCount, referrersCount } =
     useChatContext();
   const isMobile = useIsMobile();
-  const processedRef = useRef(new Set());
-  const [pendingActions, setPendingActions] = useState([]);
+  // const processedRef = useRef(new Set());
+  // const [pendingActions, setPendingActions] = useState([]);
 
-  // Extract task actions from AI messages into pendingActions for approval
+  /* COMMENTED OUT - Task action processing useEffect
   useEffect(() => {
     messages.forEach((msg) => {
       if (msg.role !== "assistant" || processedRef.current.has(msg.id)) return;
@@ -39,7 +41,9 @@ export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
       }
     });
   }, [messages, status]);
+  */
 
+  /* COMMENTED OUT - Task approval handlers
   const handleApprove = async (action) => {
     if (action.action === "create_task" && action.title) {
       await onAddTask?.({ leadId: action.leadId || null, title: action.title, dueDate: action.dueDate || new Date().toISOString().split("T")[0], priority: action.priority || "normal" });
@@ -67,6 +71,7 @@ export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
   const handleDismissAll = () => {
     setPendingActions([]);
   };
+  */
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -76,14 +81,15 @@ export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, pendingActions]);
+  }, [messages]);
 
-  // Strip JSON action blocks from display text
+  /* COMMENTED OUT - cleanDisplayText (using raw text instead)
   const cleanDisplayText = (text) => {
     return text.replace(/```json\s*\{[^}]*"action"[^}]*\}\s*```/g, '')
                .replace(/\{[^{}]*"action"\s*:\s*"(create_task|complete_task)"[^{}]*\}/g, '')
                .trim();
   };
+  */
 
   return (
     <div className="flex flex-col h-full">
@@ -161,7 +167,7 @@ export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
                   <p className="text-sm whitespace-pre-wrap">{message.parts.map((part) => part.type === 'text' ? part.text : '').join('')}</p>
                 ) : (
                   <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-                    <Markdown>{cleanDisplayText(message.parts.map((part) => part.type === 'text' ? part.text : '').join(''))}</Markdown>
+                    <Markdown>{message.parts.map((part) => part.type === 'text' ? part.text : '').join('')}</Markdown>
                   </div>
                 )}
               </div>
@@ -188,7 +194,7 @@ export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
         </div>
       </div>
 
-      {/* Pending task actions approval bar */}
+      {/* COMMENTED OUT - Pending task actions approval bar
       {pendingActions.length > 0 && (
         <div className="border-t border-border bg-card px-4 py-3">
           <div className="max-w-3xl mx-auto">
@@ -235,6 +241,7 @@ export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
           </div>
         </div>
       )}
+      */}
 
       <div className="border-t p-4">
         <form onSubmit={(e) => {

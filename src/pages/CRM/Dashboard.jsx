@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import TopBar from "@/components/TopBar";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { Users, Plus, Trash2, CheckSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Users } from "lucide-react";
+// import { Plus, Trash2, CheckSquare } from "lucide-react";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
 
 const neutralPalette = [
   "hsl(var(--primary))",
@@ -33,6 +34,7 @@ const funnelOrder = [
   "closed",
 ];
 
+/* COMMENTED OUT - Task widget helpers
 const priorityDot = { high: "bg-destructive", normal: "bg-warning", low: "bg-muted-foreground/40" };
 
 function formatTaskDate(dateStr) {
@@ -51,14 +53,17 @@ function getEndOfWeek() {
   d.setDate(d.getDate() + diff);
   return d.toISOString().split("T")[0];
 }
+*/
 
-export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask, onNavigate, setAutoOpenLeadId }) {
+export default function Dashboard({ leads = [], alerts = [] /*, tasks = [], onAddTask, onUpdateTask, onDeleteTask, onNavigate, setAutoOpenLeadId */ }) {
+  /* COMMENTED OUT - Task-related state
   const [taskFilter, setTaskFilter] = useState("today");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newLeadId, setNewLeadId] = useState("");
   const [newDueDate, setNewDueDate] = useState(getToday());
   const [newPriority, setNewPriority] = useState("normal");
+  */
 
   const activeLeads = useMemo(
     () => leads.filter((l) => l.stage && l.stage !== "rejected" && l.stage !== "closed"),
@@ -90,6 +95,7 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
       .filter((s) => s.count > 0);
   }, [leads]);
 
+  /* COMMENTED OUT - Task-related useMemo and handlers
   const today = getToday();
   const endOfWeek = getEndOfWeek();
 
@@ -142,12 +148,13 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
     { key: "week", label: "This Week", count: weekTasks.length },
     { key: "all", label: "All", count: pendingTasks.length },
   ];
+  */
 
   return (
     <div className="flex flex-col h-full">
       <TopBar title="Dashboard" subtitle="At a glance overview" alerts={alerts} />
       <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* Today's Tasks Widget */}
+        {/* COMMENTED OUT - Today's Tasks Widget
         <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -159,7 +166,6 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
             </Button>
           </div>
 
-          {/* Filter tabs */}
           <div className="flex gap-1 mb-3">
             {filterTabs.map((tab) => (
               <button
@@ -176,7 +182,6 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
             ))}
           </div>
 
-          {/* Add task form */}
           {showAddForm && (
             <form onSubmit={handleSubmitTask} className="mb-3 p-3 rounded-md border border-dashed border-border bg-muted/30 space-y-2">
               <Input
@@ -220,7 +225,6 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
             </form>
           )}
 
-          {/* Task list */}
           {filteredTasks.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               {taskFilter === "today" ? "No tasks for today" : taskFilter === "overdue" ? "No overdue tasks" : "No tasks"}
@@ -263,7 +267,6 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
             </div>
           )}
 
-          {/* Recently completed */}
           {doneTasks.length > 0 && (
             <div className="mt-3 pt-3 border-t border-border">
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">Recently Completed</p>
@@ -280,6 +283,7 @@ export default function Dashboard({ leads = [], alerts = [], tasks = [], onAddTa
             </div>
           )}
         </div>
+        */}
 
         {/* Active Leads metric */}
         <div className="max-w-xs">

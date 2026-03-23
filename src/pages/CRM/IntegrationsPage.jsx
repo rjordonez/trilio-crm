@@ -8,7 +8,8 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 
 export default function IntegrationsPage({ alerts = [] }) {
-  const { gmailConnected, gmailAddress, refreshGmailStatus } = useAuth();
+  const { gmailConnected, gmailAddress, refreshGmailStatus, user } = useAuth();
+  const signedInWithGoogle = user?.app_metadata?.provider === "google";
   const [disconnecting, setDisconnecting] = useState(false);
 
   // Refresh Gmail status when page loads (e.g., after OAuth callback redirect)
@@ -77,23 +78,30 @@ export default function IntegrationsPage({ alerts = [] }) {
             <div className="mt-4 pt-4 border-t border-border">
               {gmailConnected ? (
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-foreground">
-                    Connected as <span className="font-medium">{gmailAddress}</span>
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    {disconnecting ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    ) : (
-                      <Unplug className="h-3.5 w-3.5 mr-1.5" />
+                  <div>
+                    <p className="text-sm text-foreground">
+                      Connected as <span className="font-medium">{gmailAddress}</span>
+                    </p>
+                    {signedInWithGoogle && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Connected via Google sign-in</p>
                     )}
-                    Disconnect
-                  </Button>
+                  </div>
+                  {!signedInWithGoogle && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDisconnect}
+                      disabled={disconnecting}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      {disconnecting ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Unplug className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Disconnect
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2">

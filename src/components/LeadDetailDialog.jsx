@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check, CheckSquare } from "lucide-react";
+import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -270,6 +270,7 @@ function TimelineContent({ interactions, onAddNote, onUpdateEntry, onDeleteEntry
   );
 }
 
+/* COMMENTED OUT - TasksTabContent component
 const priorityDot = { high: "bg-destructive", normal: "bg-warning", low: "bg-muted-foreground/40" };
 
 function formatTaskDate(dateStr) {
@@ -374,6 +375,7 @@ function TasksTabContent({ lead, tasks = [], onAddTask, onUpdateTask, onDeleteTa
     </div>
   );
 }
+*/
 
 const allStages = [
   { key: "inquiry", label: "Inquiry" },
@@ -461,7 +463,7 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, tasks = [], onAddTask, onUpdateTask, onDeleteTask, customFields = [] }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, /* tasks = [], onAddTask, onUpdateTask, onDeleteTask, */ customFields = [] }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
@@ -628,10 +630,12 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
 
         <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
-          <TabsList className="w-full grid grid-cols-3 shrink-0">
+          <TabsList className="w-full grid grid-cols-2 shrink-0">
             <TabsTrigger value="intake">☎️ Intake</TabsTrigger>
             <TabsTrigger value="timeline">📋 Activity Log</TabsTrigger>
+            {/* COMMENTED OUT - Tasks tab trigger
             <TabsTrigger value="tasks">✅ Tasks</TabsTrigger>
+            */}
           </TabsList>
           <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
@@ -640,9 +644,11 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />
           </TabsContent>
+          {/* COMMENTED OUT - Tasks tab content
           <TabsContent value="tasks" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TasksTabContent lead={lead} tasks={tasks} onAddTask={onAddTask} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} />
           </TabsContent>
+          */}
         </Tabs>
       </DialogContent>
     </Dialog>
