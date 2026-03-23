@@ -302,8 +302,8 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
               <SelectValue placeholder="Select budget" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Under $40/hr">Under $40/hr</SelectItem>
-              <SelectItem value="$40–60/hr">$40–60/hr</SelectItem>
+              <SelectItem value="$40–50/hr">$40–50/hr</SelectItem>
+              <SelectItem value="$50–60/hr">$50–60/hr</SelectItem>
               <SelectItem value="$60+/hr">$60+/hr</SelectItem>
               <SelectItem value="Not sure">Not sure</SelectItem>
             </SelectContent>
