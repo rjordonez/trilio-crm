@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,14 +80,7 @@ function EditableScoreBadge({ score, onChange }) {
   );
 }
 
-const stageLabel = {
-  inquiry: "Inquiry",
-  assessment_scheduled: "Assessment Scheduled",
-  assessment_completed: "Assessment Completed",
-  proposal_sent: "Proposal Sent",
-  pending_decision: "Pending Decision",
-  closed: "Closed",
-};
+// stageLabel is now passed via props through the stages prop
 
 function generateMockSummary(lead) {
   const n = lead.intakeNote;
@@ -270,7 +263,6 @@ function TimelineContent({ interactions, onAddNote, onUpdateEntry, onDeleteEntry
   );
 }
 
-/* COMMENTED OUT - TasksTabContent component
 const priorityDot = { high: "bg-destructive", normal: "bg-warning", low: "bg-muted-foreground/40" };
 
 function formatTaskDate(dateStr) {
@@ -375,19 +367,10 @@ function TasksTabContent({ lead, tasks = [], onAddTask, onUpdateTask, onDeleteTa
     </div>
   );
 }
-*/
 
-const allStages = [
-  { key: "inquiry", label: "Inquiry" },
-  { key: "assessment_scheduled", label: "Assessment Scheduled" },
-  { key: "assessment_completed", label: "Assessment Completed" },
-  { key: "proposal_sent", label: "Proposal Sent" },
-  { key: "pending_decision", label: "Pending Decision" },
-  { key: "closed", label: "Closed" },
-  { key: "rejected", label: "Rejected" },
-];
+// allStages is now derived from stages prop
 
-function EditableStageBadge({ stage, onChange }) {
+function EditableStageBadge({ stage, onChange, allStages = [] }) {
   const [open, setOpen] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -463,7 +446,13 @@ function EditableStageBadge({ stage, onChange }) {
   );
 }
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, /* tasks = [], onAddTask, onUpdateTask, onDeleteTask, */ customFields = [] }) {
+export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onEmail, onDelete, isMobile, onStageChange, referrers = [], setLeads, setReferrers, tasks = [], onAddTask, onUpdateTask, onDeleteTask, customFields = [], stages = [] }) {
+  const allStages = useMemo(() => [...stages, { key: "rejected", label: "Rejected" }], [stages]);
+  const stageLabel = useMemo(() => {
+    const map = {};
+    allStages.forEach((s) => { map[s.key] = s.label; });
+    return map;
+  }, [allStages]);
   const [saveStatus, setSaveStatus] = useState(null);
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
@@ -594,6 +583,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
             <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
             <EditableStageBadge
               stage={localStage || lead.stage}
+              allStages={allStages}
               onChange={(newStage, rejectReason) => {
                 setLocalStage(newStage);
                 if (lead) lead.stage = newStage;
@@ -630,12 +620,10 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
 
         <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
-          <TabsList className="w-full grid grid-cols-2 shrink-0">
+          <TabsList className="w-full grid grid-cols-3 shrink-0">
             <TabsTrigger value="intake">☎️ Intake</TabsTrigger>
             <TabsTrigger value="timeline">📋 Activity Log</TabsTrigger>
-            {/* COMMENTED OUT - Tasks tab trigger
             <TabsTrigger value="tasks">✅ Tasks</TabsTrigger>
-            */}
           </TabsList>
           <TabsContent value="intake" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <p className="text-[11px] text-muted-foreground/60 italic mb-3">Click on any field to edit</p>
@@ -644,11 +632,9 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />
           </TabsContent>
-          {/* COMMENTED OUT - Tasks tab content
           <TabsContent value="tasks" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
             <TasksTabContent lead={lead} tasks={tasks} onAddTask={onAddTask} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} />
           </TabsContent>
-          */}
         </Tabs>
       </DialogContent>
     </Dialog>

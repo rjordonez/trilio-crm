@@ -2,7 +2,13 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Pencil, ChevronDown } from "lucide-react";
 import { updateLead } from "@/services/supabaseLeads";
-import { updateReferrer } from "@/services/supabaseReferrers";
+import { updateReferrer, createReferrer } from "@/services/supabaseReferrers";
+import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const placeholders = new Set([
   "No notes provided", "To be assessed", "Budget to be discussed",
@@ -195,7 +201,19 @@ function InlineSelect({ label, value, options, onSave }) {
   );
 }
 
+const partnerTypes = [
+  "Hospital / Facility",
+  "Physician / Clinician",
+  "Social Worker / Case Manager",
+  "Community Organization / Nonprofit",
+  "Current Client / Family",
+  "Home Health Agency",
+  "Placement Specialist",
+  "Other",
+];
+
 export default function EditableIntakeContent({ lead, referrers = [], setLeads, setReferrers, onSaveStatusChange, customFields = [] }) {
+  const { organization } = useAuth();
   const n = lead.intakeNote || {};
 
   // Find linked referrer
@@ -204,6 +222,14 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
     : null;
 
   const isReferral = (n.leadSource || lead.source || "").toLowerCase().includes("referral");
+
+  // Inline add partner state
+  const [addingPartner, setAddingPartner] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({ name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "" });
+  const [savingPartner, setSavingPartner] = useState(false);
+  const setPartner = (key, val) => setPartnerForm((f) => ({ ...f, [key]: val }));
+  const partnerValid = partnerForm.name && partnerForm.contactPerson && partnerForm.email && partnerForm.type;
+  const resetPartnerForm = () => setPartnerForm({ name: "", contactPerson: "", contactTitle: "", email: "", phone: "", type: "", notes: "" });
 
   const saveTimerRef = useRef(null);
   const clearStatusRef = useRef(null);
@@ -242,6 +268,49 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
       if (clearStatusRef.current) clearTimeout(clearStatusRef.current);
     };
   }, []);
+
+  const handleAddPartner = async () => {
+    if (!partnerValid) return;
+    setSavingPartner(true);
+    try {
+      const newPartner = {
+        name: partnerForm.name,
+        organization: partnerForm.name,
+        type: partnerForm.type,
+        contactPerson: partnerForm.contactPerson,
+        contactTitle: partnerForm.contactTitle,
+        phone: partnerForm.phone,
+        email: partnerForm.email,
+        notes: partnerForm.notes,
+        referredLeadIds: lead?.id ? [lead.id] : [],
+        serviceHoursRequested: 0,
+        commissionRate: 0,
+        totalCommission: 0,
+        status: "active",
+        lastReferralDate: new Date().toISOString().split("T")[0],
+      };
+      const saved = await createReferrer(newPartner, organization?.id);
+      if (setReferrers) setReferrers((prev) => [...prev, saved]);
+      // Link to lead
+      lead.referrerId = saved.id;
+      lead.referPartner = saved.organization || saved.name;
+      lead.referredBy = saved.contactPerson || "";
+      setFields((prev) => ({
+        ...prev,
+        referPartner: saved.organization || saved.name,
+        referredBy: saved.contactPerson || "",
+      }));
+      debouncedSave();
+      setAddingPartner(false);
+      resetPartnerForm();
+      toast({ title: "Partner added", description: `${saved.name} has been added.` });
+    } catch (err) {
+      console.error("Failed to add partner:", err);
+      toast({ title: "Error", description: "Failed to add partner.", variant: "destructive" });
+    } finally {
+      setSavingPartner(false);
+    }
+  };
 
   // State for all fields
   const buildFields = () => ({
@@ -388,11 +457,80 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
           <InlineSelect label="Lead Source" value={fields.leadSource} options={leadSourceOptions} onSave={(v) => update("leadSource", v)} />
           {showReferral && (
             <>
-              <InlineSelect label="Refer Partner" value={fields.referPartner} options={partnerOptions} onSave={(v) => { update("referPartner", v); if (v !== fields.referPartner) update("referredBy", ""); }} />
+              <div className="flex items-end gap-1">
+                <InlineSelect label="Refer Partner" value={fields.referPartner} options={partnerOptions} onSave={(v) => { update("referPartner", v); if (v !== fields.referPartner) update("referredBy", ""); }} />
+                <button
+                  onClick={() => setAddingPartner(!addingPartner)}
+                  className="shrink-0 p-0.5 rounded hover:bg-muted transition-colors mb-0.5"
+                  title="Add new partner"
+                >
+                  <Plus className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                </button>
+              </div>
               <InlineSelect label="Referred by" value={fields.referredBy} options={contactOptions} onSave={(v) => update("referredBy", v)} />
             </>
           )}
         </div>
+
+        {/* Inline Add Partner Form */}
+        {showReferral && addingPartner && (
+          <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2.5 mt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground">Add New Partner</span>
+              <button onClick={() => { setAddingPartner(false); resetPartnerForm(); }} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Partner Name *</label>
+                <Input value={partnerForm.name} onChange={(e) => setPartner("name", e.target.value)} className="h-7 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Primary Contact Person *</label>
+                <Input value={partnerForm.contactPerson} onChange={(e) => setPartner("contactPerson", e.target.value)} className="h-7 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Title</label>
+                <Input placeholder="e.g. Case Manager" value={partnerForm.contactTitle} onChange={(e) => setPartner("contactTitle", e.target.value)} className="h-7 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Email *</label>
+                <Input type="email" value={partnerForm.email} onChange={(e) => setPartner("email", e.target.value)} className="h-7 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Phone</label>
+                <Input value={partnerForm.phone} onChange={(e) => setPartner("phone", e.target.value)} className="h-7 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Partner Type *</label>
+                <Select value={partnerForm.type} onValueChange={(v) => setPartner("type", v)}>
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {partnerTypes.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted-foreground">Notes</label>
+              <textarea
+                placeholder="How we connected, referral preferences..."
+                value={partnerForm.notes}
+                onChange={(e) => setPartner("notes", e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs min-h-[40px] resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setAddingPartner(false); resetPartnerForm(); }}>Cancel</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={handleAddPartner} disabled={!partnerValid || savingPartner}>
+                {savingPartner ? "Adding..." : "Add Partner"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Separator />

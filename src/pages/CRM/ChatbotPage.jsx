@@ -4,10 +4,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Bot, User, Square } from "lucide-react";
+import { Send, Loader2, Bot, User, Square, CheckSquare, Check, X } from "lucide-react";
 import Markdown from "react-markdown";
 
-/* COMMENTED OUT - Task action parsing
 function parseTaskActions(text) {
   const actions = [];
   const regex = /\{[^{}]*"action"\s*:\s*"(create_task|complete_task)"[^{}]*\}/g;
@@ -17,17 +16,15 @@ function parseTaskActions(text) {
   }
   return actions;
 }
-*/
 
-export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */ }) {
+export default function ChatbotPage({ alerts = [], onAddTask, onUpdateTask }) {
   const messagesEndRef = useRef(null);
   const { messages, sendMessage, stop, status, input, setInput, leadsCount, referrersCount } =
     useChatContext();
   const isMobile = useIsMobile();
-  // const processedRef = useRef(new Set());
-  // const [pendingActions, setPendingActions] = useState([]);
+  const processedRef = useRef(new Set());
+  const [pendingActions, setPendingActions] = useState([]);
 
-  /* COMMENTED OUT - Task action processing useEffect
   useEffect(() => {
     messages.forEach((msg) => {
       if (msg.role !== "assistant" || processedRef.current.has(msg.id)) return;
@@ -41,9 +38,7 @@ export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */
       }
     });
   }, [messages, status]);
-  */
 
-  /* COMMENTED OUT - Task approval handlers
   const handleApprove = async (action) => {
     if (action.action === "create_task" && action.title) {
       await onAddTask?.({ leadId: action.leadId || null, title: action.title, dueDate: action.dueDate || new Date().toISOString().split("T")[0], priority: action.priority || "normal" });
@@ -71,7 +66,6 @@ export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */
   const handleDismissAll = () => {
     setPendingActions([]);
   };
-  */
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -83,13 +77,11 @@ export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */
     scrollToBottom();
   }, [messages]);
 
-  /* COMMENTED OUT - cleanDisplayText (using raw text instead)
   const cleanDisplayText = (text) => {
     return text.replace(/```json\s*\{[^}]*"action"[^}]*\}\s*```/g, '')
                .replace(/\{[^{}]*"action"\s*:\s*"(create_task|complete_task)"[^{}]*\}/g, '')
                .trim();
   };
-  */
 
   return (
     <div className="flex flex-col h-full">
@@ -144,40 +136,44 @@ export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */
             </div>
           )}
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              {message.role === "assistant" && (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
-                  <Bot className="h-4 w-4 text-primary-foreground" />
-                </div>
-              )}
+          {messages.map((message) => {
+            const rawText = message.parts.map((part) => part.type === 'text' ? part.text : '').join('');
+            const displayText = message.role === "assistant" ? cleanDisplayText(rawText) : rawText;
+            return (
               <div
-                className={`rounded-lg px-4 py-3 max-w-[80%] ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+                key={message.id}
+                className={`flex gap-3 ${
+                  message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                {message.role === "user" ? (
-                  <p className="text-sm whitespace-pre-wrap">{message.parts.map((part) => part.type === 'text' ? part.text : '').join('')}</p>
-                ) : (
-                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-                    <Markdown>{message.parts.map((part) => part.type === 'text' ? part.text : '').join('')}</Markdown>
+                {message.role === "assistant" && (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
+                    <Bot className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                )}
+                <div
+                  className={`rounded-lg px-4 py-3 max-w-[80%] ${
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
+                  }`}
+                >
+                  {message.role === "user" ? (
+                    <p className="text-sm whitespace-pre-wrap">{displayText}</p>
+                  ) : (
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                      <Markdown>{displayText}</Markdown>
+                    </div>
+                  )}
+                </div>
+                {message.role === "user" && (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <User className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
               </div>
-              {message.role === "user" && (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
 
           {isLoading && (
             <div className="flex gap-3 justify-start">
@@ -194,7 +190,6 @@ export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */
         </div>
       </div>
 
-      {/* COMMENTED OUT - Pending task actions approval bar
       {pendingActions.length > 0 && (
         <div className="border-t border-border bg-card px-4 py-3">
           <div className="max-w-3xl mx-auto">
@@ -241,7 +236,6 @@ export default function ChatbotPage({ alerts = [] /*, onAddTask, onUpdateTask */
           </div>
         </div>
       )}
-      */}
 
       <div className="border-t p-4">
         <form onSubmit={(e) => {

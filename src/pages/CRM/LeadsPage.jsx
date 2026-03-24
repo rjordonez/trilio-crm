@@ -6,7 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search, CheckSquare, Square, Link2 } from "lucide-react";
+import { useNavigation } from "@/contexts/NavigationContext";
 // import { Columns3 } from "lucide-react";
 // import { useColumnConfig, BUILT_IN_COLUMNS } from "@/hooks/useColumnConfig";
 import { Input } from "@/components/ui/input";
@@ -34,22 +35,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { defaultTemplates, personalizeContent } from "@/data/emailTemplates";
 
-const stages = [
-  { key: "inquiry", label: "Inquiry" },
-  { key: "assessment_scheduled", label: "Assessment Scheduled" },
-  { key: "assessment_completed", label: "Assessment Completed" },
-  { key: "proposal_sent", label: "Proposal Sent" },
-  { key: "pending_decision", label: "Pending Decision" },
-  { key: "closed", label: "Closed" },
-];
-
-const stageProgress = {
-  inquiry: 10, assessment_scheduled: 25, assessment_completed: 45, proposal_sent: 65, pending_decision: 85, closed: 100, rejected: 0,
-};
-
-const stageLabel = {
-  inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed", proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed", rejected: "Rejected",
-};
+// stages, stageLabel, stageProgress are now passed as props from CRMView
 
 const careLevelColors = {
   "ADL Support": "bg-info/10 text-info",
@@ -308,8 +294,54 @@ function ColumnToggle({ allColumns, visibleIds, onToggle, onReset }) {
 }
 */
 
-export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask, customFields = [], orgSettings, saveOrgSettings }) {
+function AddStageColumn({ onAddStage }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+
+  const handleAdd = () => {
+    if (!name.trim()) return;
+    onAddStage?.(name.trim());
+    setName("");
+    setAdding(false);
+  };
+
+  if (adding) {
+    return (
+      <div className="w-64 flex-shrink-0">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <Input
+            autoFocus
+            placeholder="Stage name..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setAdding(false); setName(""); } }}
+            className="h-7 text-xs"
+          />
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleAdd} disabled={!name.trim()}>Add</Button>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setAdding(false); setName(""); }}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-0.5">
+      <button
+        onClick={() => setAdding(true)}
+        className="flex items-center justify-center h-7 w-7 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+        title="Add stage"
+      >
+        <span className="text-lg leading-none">+</span>
+      </button>
+    </div>
+  );
+}
+
+export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, onAutoOpenHandled, referrers = [], setReferrers, onReferrerAdded, alerts = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask, customFields = [], orgSettings, saveOrgSettings, stages = [], stageLabel = {}, stageProgress = {}, onAddStage, executeRules }) {
   const { user, organization, gmailConnected } = useAuth();
+  const { navigate } = useNavigation();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
   /* COMMENTED OUT - useColumnConfig hook
@@ -333,6 +365,21 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   // Call & Email dialog state
   const [callTarget, setCallTarget] = useState(null);
   const [emailTarget, setEmailTarget] = useState(null);
+
+  // Bulk selection
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedLeadIds, setSelectedLeadIds] = useState(new Set());
+
+  // Bulk email compose
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
+  const [bulkEmailTemplate, setBulkEmailTemplate] = useState("");
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("");
+  const [bulkEmailBody, setBulkEmailBody] = useState("");
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
+  const [bulkEmailProgress, setBulkEmailProgress] = useState("");
+
+  // Gmail not connected popup
+  const [showGmailPrompt, setShowGmailPrompt] = useState(false);
 
   // Auto-open lead detail dialog when autoOpenLeadId is set
   useEffect(() => {
@@ -425,9 +472,13 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         date: dateStr,
       }, orgId).catch((err) => console.error("Failed to save activity log:", err));
 
-      // Prompt user to send rejection email if Gmail is connected
-      if (gmailConnected && rejectedLead?.contactEmail) {
-        setPendingRejectionEmail({ lead: rejectedLead, leadId, dateStr });
+      // Prompt user to send rejection email
+      if (rejectedLead?.contactEmail) {
+        if (gmailConnected) {
+          setPendingRejectionEmail({ lead: rejectedLead, leadId, dateStr });
+        } else {
+          setShowGmailPrompt(true);
+        }
       }
     } else {
       createActivityLog({
@@ -438,8 +489,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         by: userName,
         date: dateStr,
       }, orgId).catch((err) => console.error("Failed to save activity log:", err));
+
+      // Auto-create tasks from automation rules for the new stage
+      if (executeRules) {
+        const lead = leads.find((l) => l.id === leadId);
+        const autoTasks = executeRules(newStage, lead, newLabel);
+        for (const task of autoTasks) {
+          onAddTask?.(task);
+        }
+      }
     }
-  }, [setLeads, userName, gmailConnected, orgId]);
+  }, [setLeads, userName, gmailConnected, orgId, executeRules, leads, onAddTask]);
 
   // Pending rejection email approval with preview
   const [pendingRejectionEmail, setPendingRejectionEmail] = useState(null);
@@ -527,6 +587,117 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const handleEmail = (lead) => {
     setEmailTarget(lead);
   };
+
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode((prev) => {
+      if (prev) setSelectedLeadIds(new Set());
+      return !prev;
+    });
+  }, []);
+
+  const toggleLeadSelection = useCallback((leadId) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) next.delete(leadId);
+      else next.add(leadId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedLeadIds((prev) => {
+      if (prev.size === filteredLeads.length) return new Set();
+      return new Set(filteredLeads.map((l) => l.id));
+    });
+  }, [filteredLeads]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedLeadIds(new Set());
+  }, []);
+
+  const selectedLeads = useMemo(() => leads.filter((l) => selectedLeadIds.has(l.id)), [leads, selectedLeadIds]);
+  const emailableLeads = useMemo(() => selectedLeads.filter((l) => l.contactEmail), [selectedLeads]);
+
+  const handleBulkEmailOpen = useCallback(() => {
+    if (!gmailConnected) {
+      setShowGmailPrompt(true);
+      return;
+    }
+    if (emailableLeads.length === 0) {
+      toast({ title: "No email addresses", description: "None of the selected leads have email addresses.", variant: "destructive" });
+      return;
+    }
+    setBulkEmailOpen(true);
+  }, [gmailConnected, emailableLeads]);
+
+  const handleBulkTemplateChange = useCallback((templateId) => {
+    setBulkEmailTemplate(templateId);
+    if (!templateId) {
+      setBulkEmailSubject("");
+      setBulkEmailBody("");
+      return;
+    }
+    const template = defaultTemplates.find((t) => t.id === templateId);
+    if (template) {
+      // Strip merge tags for bulk — these are group emails, not personalized
+      const strip = (text) => text
+        .replace(/\{\{name\}\}/g, "")
+        .replace(/\{\{contact_person\}\}/g, "")
+        .replace(/\{\{care_level\}\}/g, "")
+        .replace(/\{\{sender_name\}\}/g, userName || "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+      setBulkEmailSubject(strip(template.subject));
+      setBulkEmailBody(template.body.replace(/\{\{sender_name\}\}/g, userName || "").replace(/\{\{name\}\}/g, "").replace(/\{\{contact_person\}\}/g, "").replace(/\{\{care_level\}\}/g, ""));
+    }
+  }, [userName]);
+
+  const handleBulkEmailSend = useCallback(async () => {
+    if (!bulkEmailSubject.trim() || !bulkEmailBody.trim() || emailableLeads.length === 0) return;
+    setBulkEmailSending(true);
+    let sent = 0;
+    let failed = 0;
+    const dateStr = new Date().toISOString().split("T")[0];
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      for (let i = 0; i < emailableLeads.length; i++) {
+        const lead = emailableLeads[i];
+        setBulkEmailProgress(`Sending ${i + 1}/${emailableLeads.length}...`);
+        const subject = bulkEmailSubject.trim();
+        const body = bulkEmailBody.trim();
+        try {
+          const res = await fetch("/api/gmail-send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ to: lead.contactEmail, subject, body }),
+          });
+          if (res.ok) {
+            sent++;
+            createActivityLog({ leadId: lead.id, type: "email", title: "Bulk Email Sent", description: `Email sent: ${subject}`, by: userName, date: dateStr }, orgId).catch(console.error);
+          } else {
+            failed++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+    } finally {
+      setBulkEmailSending(false);
+      setBulkEmailProgress("");
+      setBulkEmailOpen(false);
+      setBulkEmailSubject("");
+      setBulkEmailBody("");
+      setBulkEmailTemplate("");
+      setSelectedLeadIds(new Set());
+      setSelectMode(false);
+      toast({
+        title: `${sent} email${sent !== 1 ? "s" : ""} sent`,
+        description: failed > 0 ? `${failed} failed to send` : undefined,
+        variant: failed > 0 ? "destructive" : undefined,
+      });
+    }
+  }, [bulkEmailSubject, bulkEmailBody, emailableLeads, userName, orgId]);
 
   // --- Mobile Kanban ---
   const renderMobileKanban = () => (
@@ -710,6 +881,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         subtitle={`${filteredLeads.length} prospects`}
         action={{ label: "Add Lead", onClick: () => setAddOpen(true) }}
         secondaryAction={{ label: "Import", onClick: () => setImportOpen(true) }}
+        bulkAction={selectedLeadIds.size > 0 ? { label: "Send Email", onClick: handleBulkEmailOpen, count: selectedLeadIds.size } : undefined}
         isMobile={isMobile}
         alerts={alerts}
       />
@@ -739,6 +911,25 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
           <ColumnToggle allColumns={allColumns} visibleIds={visibleIds} onToggle={toggleColumn} onReset={resetToDefaults} />
         )}
         */}
+        {!isMobile && view === "table" && (
+          <button
+            onClick={toggleSelectMode}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              selectMode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            <CheckSquare className="h-3.5 w-3.5" /> Select
+          </button>
+        )}
+        {selectedLeadIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-foreground">{selectedLeadIds.size} selected</span>
+            <Button size="sm" onClick={handleBulkEmailOpen} className="h-7 gap-1 text-xs">
+              <Mail className="h-3 w-3" /> Send Email
+            </Button>
+            <button onClick={clearSelection} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Clear</button>
+          </div>
+        )}
         <div className="ml-auto relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -834,6 +1025,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                     </div>
                   );
                 })}
+                <AddStageColumn onAddStage={onAddStage} />
               </div>
             </DragDropContext>
             {rejectedLeads.length > 0 && (
@@ -883,6 +1075,16 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {selectMode && (
+                      <TableHead className="w-10 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedLeadIds.size > 0 && selectedLeadIds.size === filteredLeads.length}
+                          onChange={toggleSelectAll}
+                          className="rounded border-border"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead className="min-w-[150px] sticky left-0 bg-card z-10 whitespace-nowrap">Prospect Name</TableHead>
                     <TableHead className="min-w-[90px] whitespace-nowrap">
                       <HeaderFilter label="Score" value={filters.score} options={scoreOptions} onChange={(v) => setFilters((f) => ({ ...f, score: v }))} />
@@ -907,7 +1109,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} className={`cursor-pointer ${lead.stage === "rejected" ? "opacity-60" : ""}`} onClick={() => setSelectedLead(lead)}>
+                    <TableRow key={lead.id} className={`cursor-pointer ${lead.stage === "rejected" ? "opacity-60" : ""}`} onClick={() => selectMode ? toggleLeadSelection(lead.id) : setSelectedLead(lead)}>
+                      {selectMode && (
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLeadIds.has(lead.id)}
+                            onChange={() => toggleLeadSelection(lead.id)}
+                            className="rounded border-border"
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium text-foreground sticky left-0 bg-card z-10 whitespace-nowrap">{lead.name}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize whitespace-nowrap ${scoreColors[lead.score] || ""}`}>{lead.score}</span>
@@ -959,15 +1171,17 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
         customFields={customFields}
+        stages={stages}
       />
 
-      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} customFields={customFields} />
+      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onLeadCreated={onAddLead} isMobile={isMobile} referrers={referrers} onReferrerAdded={onReferrerAdded} customFields={customFields} stages={stages} />
 
       <ImportCSVDialog
         open={importOpen}
         onOpenChange={setImportOpen}
         userName={userName}
         existingReferrers={referrers}
+        stages={stages}
         onComplete={({ newLeads, newReferrers, existingReferrerUpdates }) => {
           setLeads((prev) => [...prev, ...newLeads]);
           if (newReferrers.length > 0) {
@@ -980,6 +1194,15 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                 return update ? { ...r, referredLeadIds: update.referredLeadIds } : r;
               })
             );
+          }
+          // Auto-create tasks for imported leads
+          if (executeRules) {
+            for (const lead of newLeads) {
+              const autoTasks = executeRules("new_lead", lead, stageLabel[lead.stage] || "");
+              for (const task of autoTasks) {
+                onAddTask?.(task);
+              }
+            }
           }
         }}
       />
@@ -1106,6 +1329,73 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                 Skip
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkEmailOpen} onOpenChange={(open) => { if (!open && !bulkEmailSending) { setBulkEmailOpen(false); setBulkEmailTemplate(""); setBulkEmailSubject(""); setBulkEmailBody(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send Email to {selectedLeadIds.size} Lead{selectedLeadIds.size !== 1 ? "s" : ""}</DialogTitle>
+            <DialogDescription>
+              {emailableLeads.length} of {selectedLeadIds.size} selected leads have email addresses. Each will receive an individually personalized email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground w-10 shrink-0">Tpl:</span>
+              <select
+                value={bulkEmailTemplate}
+                onChange={(e) => handleBulkTemplateChange(e.target.value)}
+                className="flex-1 text-sm border border-border rounded-md px-2 py-1.5 bg-background text-foreground"
+              >
+                <option value="">No template (custom)</option>
+                {defaultTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground w-10 shrink-0">Subj:</span>
+              <Input value={bulkEmailSubject} onChange={(e) => setBulkEmailSubject(e.target.value)} placeholder="Subject" className="flex-1" />
+            </div>
+            <Textarea
+              value={bulkEmailBody}
+              onChange={(e) => setBulkEmailBody(e.target.value)}
+              placeholder="Write your message..."
+              className="min-h-[180px]"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Same email will be sent to each lead individually. Recipients won't see each other.
+            </p>
+            <div className="flex items-center justify-between">
+              <Button variant="outline" onClick={() => { setBulkEmailOpen(false); setBulkEmailTemplate(""); setBulkEmailSubject(""); setBulkEmailBody(""); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkEmailSend} disabled={bulkEmailSending || !bulkEmailSubject.trim() || !bulkEmailBody.trim()}>
+                <Mail className="h-4 w-4 mr-1.5" />
+                {bulkEmailSending ? bulkEmailProgress : `Send ${emailableLeads.length} Email${emailableLeads.length !== 1 ? "s" : ""}`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showGmailPrompt} onOpenChange={setShowGmailPrompt}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Gmail Required</DialogTitle>
+            <DialogDescription>
+              Connect your Gmail account to send emails from the CRM.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <Button onClick={() => { setShowGmailPrompt(false); navigate("integrations"); }} className="flex-1">
+              <Link2 className="h-4 w-4 mr-1.5" /> Go to Integrations
+            </Button>
+            <Button variant="outline" onClick={() => setShowGmailPrompt(false)} className="flex-1">
+              Cancel
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

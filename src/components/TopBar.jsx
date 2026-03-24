@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, Plus, Upload, LogOut, Clock, AlertTriangle, Settings, Plug, X } from "lucide-react";
+import { Bell, Plus, Upload, LogOut, Clock, AlertTriangle, Settings, Plug, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigation } from "@/contexts/NavigationContext";
@@ -69,7 +69,7 @@ function NotificationPanel({ alerts, onClose, onDismiss, onClearAll }) {
   );
 }
 
-export default function TopBar({ title, subtitle, action, secondaryAction, isMobile, alerts = [] }) {
+export default function TopBar({ title, subtitle, action, secondaryAction, bulkAction, isMobile, alerts = [] }) {
   const { signOut, user } = useAuth();
   const { navigate, dismissAlert, clearAllAlerts } = useNavigation();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -81,6 +81,12 @@ export default function TopBar({ title, subtitle, action, secondaryAction, isMob
         {!isMobile && subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-2">
+        {bulkAction && !isMobile && (
+          <Button size="sm" onClick={bulkAction.onClick} className="gap-1.5">
+            <Mail className="h-3.5 w-3.5" />
+            {bulkAction.label} ({bulkAction.count})
+          </Button>
+        )}
         {secondaryAction && !isMobile && (
           <Button size="sm" variant="outline" onClick={secondaryAction.onClick} className="gap-1.5">
             <Upload className="h-3.5 w-3.5" />
@@ -102,7 +108,7 @@ export default function TopBar({ title, subtitle, action, secondaryAction, isMob
               >
                 <Bell className="h-5 w-5" />
                 {alerts.length > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
                     {alerts.length > 9 ? "9+" : alerts.length}
                   </span>
                 )}

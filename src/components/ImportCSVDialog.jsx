@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
@@ -100,11 +100,9 @@ const knownColumns = new Set([
   "Lead Source", "Referred By", "Partner Name", "Partner Type", "Partner Email", "Stage", "Notes",
 ]);
 
-const validStages = new Set([
-  "inquiry", "assessment_scheduled", "assessment_completed", "proposal_sent", "pending_decision", "closed",
-]);
+// validStages is now derived from the stages prop
 
-function csvRowToLead(row, userName) {
+function csvRowToLead(row, userName, validStages) {
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
   const name = row["Client Name"] || "Unknown";
@@ -133,7 +131,7 @@ function csvRowToLead(row, userName) {
     hoursPerDay: row["Hours Per Day"] || "",
     lastContactDate: dateStr,
     facility: "",
-    stage: (row["Stage"] && validStages.has(row["Stage"])) ? row["Stage"] : "inquiry",
+    stage: (row["Stage"] && validStages.has(row["Stage"])) ? row["Stage"] : (validStages.values().next().value || "inquiry"),
     score: "cold",
     source,
     referrerId: null,
@@ -167,7 +165,8 @@ function csvRowToLead(row, userName) {
   };
 }
 
-export default function ImportCSVDialog({ open, onOpenChange, existingReferrers = [], onComplete, userName }) {
+export default function ImportCSVDialog({ open, onOpenChange, existingReferrers = [], onComplete, userName, stages = [] }) {
+  const validStages = useMemo(() => new Set(stages.map((s) => s.key)), [stages]);
   const { organization } = useAuth();
   const [status, setStatus] = useState("idle"); // idle | preview | importing | done | error
   const [parsed, setParsed] = useState([]);
@@ -290,7 +289,7 @@ export default function ImportCSVDialog({ open, onOpenChange, existingReferrers 
 
       // Phase 2b: Create leads with referrerId linked
       const leadItems = parsed.map((row) => {
-        const lead = csvRowToLead(row, userName);
+        const lead = csvRowToLead(row, userName, validStages);
         if (lead.source === "Referral Partner" && lead.referredBy) {
           const ref = contactToReferrer.get(lead.referredBy.toLowerCase());
           if (ref) {

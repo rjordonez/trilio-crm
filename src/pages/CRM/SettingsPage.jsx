@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,15 +23,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save } from "lucide-react";
-// import { Plus, Trash2, RotateCcw, Columns3 } from "lucide-react";
+import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save, Plus, Trash2, RotateCcw, GripVertical, Lock, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 // import { useColumnConfig } from "@/hooks/useColumnConfig";
 import { defaultTemplates } from "@/data/emailTemplates";
 
-export default function SettingsPage({ alerts = [], customFields = [], onAddField, onRemoveField, onUpdateField, orgSettings, saveOrgSettings }) {
+export default function SettingsPage({ alerts = [], customFields = [], onAddField, onRemoveField, onUpdateField, orgSettings, saveOrgSettings, stages = [], stageLabel = {}, onAddStage, onRemoveStage, onRenameStage, onReorderStages, onResetStages, leads = [], automationRules = [], onAddRule, onRemoveRule, onUpdateRule, onToggleRule, onResetAutomation }) {
   const { organization, leaveOrganization, refreshOrganization } = useAuth();
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -183,6 +182,90 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
   };
   */
 
+  // Pipeline Stages state
+  const [newStageName, setNewStageName] = useState("");
+  const [editingStageKey, setEditingStageKey] = useState(null);
+  const [editingStageLabel, setEditingStageLabel] = useState("");
+  const [deleteStage, setDeleteStage] = useState(null);
+  const [moveToKey, setMoveToKey] = useState("");
+
+  const stageLeadCounts = useMemo(() => {
+    const counts = {};
+    (leads || []).forEach((l) => { counts[l.stage] = (counts[l.stage] || 0) + 1; });
+    return counts;
+  }, [leads]);
+
+  const handleAddStage = () => {
+    if (!newStageName.trim()) return;
+    onAddStage?.(newStageName.trim());
+    setNewStageName("");
+  };
+
+  const handleDeleteStage = async () => {
+    if (!deleteStage) return;
+    const count = stageLeadCounts[deleteStage.key] || 0;
+    if (count > 0 && !moveToKey) return;
+    await onRemoveStage?.(deleteStage.key, moveToKey || stages[0]?.key, leads);
+    setDeleteStage(null);
+    setMoveToKey("");
+  };
+
+  const handleRenameStage = (key) => {
+    if (!editingStageLabel.trim()) return;
+    onRenameStage?.(key, editingStageLabel.trim());
+    setEditingStageKey(null);
+    setEditingStageLabel("");
+  };
+
+  const handleMoveStage = (index, direction) => {
+    const newStages = [...stages];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newStages.length) return;
+    [newStages[index], newStages[targetIndex]] = [newStages[targetIndex], newStages[index]];
+    onReorderStages?.(newStages);
+  };
+
+  // Task Automation state
+  const [addingRule, setAddingRule] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState(null);
+  const [ruleForm, setRuleForm] = useState({ trigger: "new_lead", taskTitle: "", dueDaysOffset: 1, priority: "normal" });
+  const setRuleField = (key, val) => setRuleForm((f) => ({ ...f, [key]: val }));
+
+  const triggerOptions = useMemo(() => [
+    { value: "new_lead", label: "New Lead Added" },
+    ...stages.map((s) => ({ value: s.key, label: `Stage: ${s.label}` })),
+  ], [stages]);
+
+  const triggerLabel = useMemo(() => {
+    const map = { new_lead: "New Lead Added" };
+    stages.forEach((s) => { map[s.key] = s.label; });
+    return map;
+  }, [stages]);
+
+  const handleSaveRule = () => {
+    if (!ruleForm.taskTitle.trim()) return;
+    if (editingRuleId) {
+      onUpdateRule?.(editingRuleId, ruleForm);
+      setEditingRuleId(null);
+    } else {
+      onAddRule?.(ruleForm);
+    }
+    setAddingRule(false);
+    setRuleForm({ trigger: "new_lead", taskTitle: "", dueDaysOffset: 1, priority: "normal" });
+  };
+
+  const startEditRule = (rule) => {
+    setEditingRuleId(rule.id);
+    setRuleForm({ trigger: rule.trigger, taskTitle: rule.taskTitle, dueDaysOffset: rule.dueDaysOffset, priority: rule.priority });
+    setAddingRule(true);
+  };
+
+  const cancelRuleForm = () => {
+    setAddingRule(false);
+    setEditingRuleId(null);
+    setRuleForm({ trigger: "new_lead", taskTitle: "", dueDaysOffset: 1, priority: "normal" });
+  };
+
   const pendingMembers = members.filter(m => m.status === 'pending');
   const activeMembers = members.filter(m => m.status === 'active');
 
@@ -325,6 +408,250 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
                   </TableBody>
                 </Table>
               </div>
+            )}
+          </div>
+
+          {/* Pipeline Stages */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Pipeline Stages</h3>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { onResetStages?.(); toast({ title: "Pipeline stages reset to default" }); }}>
+                <RotateCcw className="h-3 w-3 mr-1" /> Reset
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Customize the stages in your sales pipeline. Drag to reorder, rename, or add new stages.
+            </p>
+
+            <div className="space-y-1">
+              {stages.map((stage, index) => (
+                <div key={stage.key} className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-muted/30 group">
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      onClick={() => handleMoveStage(index, -1)}
+                      disabled={index === 0}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                    </button>
+                    <button
+                      onClick={() => handleMoveStage(index, 1)}
+                      disabled={index === stages.length - 1}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                  </div>
+
+                  {editingStageKey === stage.key ? (
+                    <Input
+                      autoFocus
+                      value={editingStageLabel}
+                      onChange={(e) => setEditingStageLabel(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleRenameStage(stage.key); if (e.key === "Escape") setEditingStageKey(null); }}
+                      onBlur={() => handleRenameStage(stage.key)}
+                      className="h-7 text-sm flex-1"
+                    />
+                  ) : (
+                    <span
+                      className="text-sm text-foreground flex-1 cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => { setEditingStageKey(stage.key); setEditingStageLabel(stage.label); }}
+                    >
+                      {stage.label}
+                    </span>
+                  )}
+
+                  {stageLeadCounts[stage.key] > 0 && (
+                    <Badge variant="secondary" className="text-[10px]">{stageLeadCounts[stage.key]}</Badge>
+                  )}
+
+                  {stages.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const count = stageLeadCounts[stage.key] || 0;
+                        if (count === 0) {
+                          onRemoveStage?.(stage.key, stages[0]?.key, leads);
+                        } else {
+                          setDeleteStage(stage);
+                          setMoveToKey("");
+                        }
+                      }}
+                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {/* Rejected - locked row */}
+              <div className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-muted/30 opacity-60">
+                <Lock className="h-3 w-3 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground flex-1">Rejected</span>
+                <span className="text-[10px] text-muted-foreground italic">Always present</span>
+              </div>
+            </div>
+
+            {/* Add Stage */}
+            <div className="flex gap-2 pt-2 border-t border-border">
+              <Input
+                placeholder="New stage name..."
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddStage(); }}
+                className="h-8 text-xs flex-1"
+              />
+              <Button size="sm" onClick={handleAddStage} disabled={!newStageName.trim()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Stage
+              </Button>
+            </div>
+          </div>
+
+          {/* Delete Stage Dialog */}
+          <AlertDialog open={!!deleteStage} onOpenChange={(open) => { if (!open) { setDeleteStage(null); setMoveToKey(""); } }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete "{deleteStage?.label}" stage?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This stage has {stageLeadCounts[deleteStage?.key] || 0} lead{(stageLeadCounts[deleteStage?.key] || 0) !== 1 ? "s" : ""}. Move them to another stage before deleting.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="py-2">
+                <label className="text-sm text-foreground mb-1 block">Move leads to:</label>
+                <select
+                  value={moveToKey}
+                  onChange={(e) => setMoveToKey(e.target.value)}
+                  className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">Select a stage...</option>
+                  {stages.filter((s) => s.key !== deleteStage?.key).map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteStage} disabled={!moveToKey} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete Stage
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Task Automation */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Task Automation</h3>
+              </div>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { onResetAutomation?.(); toast({ title: "Automation rules reset to default" }); }}>
+                <RotateCcw className="h-3 w-3 mr-1" /> Reset
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Automatically create tasks when leads are added or move to a stage. Variables: <code className="bg-muted px-1 rounded">{"{{name}}"}</code> <code className="bg-muted px-1 rounded">{"{{stage}}"}</code> <code className="bg-muted px-1 rounded">{"{{source}}"}</code>
+            </p>
+
+            {/* Rules list */}
+            {automationRules.length > 0 && (
+              <div className="space-y-1">
+                {automationRules.map((rule) => (
+                  <div key={rule.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-muted/30 group">
+                    <button
+                      onClick={() => onToggleRule?.(rule.id)}
+                      className={`h-4 w-4 rounded border shrink-0 flex items-center justify-center transition-colors ${rule.enabled ? "bg-primary border-primary" : "border-border hover:border-primary"}`}
+                    >
+                      {rule.enabled && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                    </button>
+                    <Badge variant="secondary" className="text-[10px] shrink-0">{triggerLabel[rule.trigger] || rule.trigger}</Badge>
+                    <span className={`text-sm flex-1 truncate ${rule.enabled ? "text-foreground" : "text-muted-foreground line-through"}`}>{rule.taskTitle}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {rule.dueDaysOffset === 0 ? "today" : rule.dueDaysOffset === 1 ? "in 1 day" : `in ${rule.dueDaysOffset} days`}
+                    </span>
+                    {rule.priority !== "normal" && (
+                      <Badge variant="secondary" className={`text-[10px] ${rule.priority === "high" ? "text-destructive" : "text-muted-foreground"}`}>{rule.priority}</Badge>
+                    )}
+                    <button
+                      onClick={() => startEditRule(rule)}
+                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+                    >
+                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                    </button>
+                    <button
+                      onClick={() => onRemoveRule?.(rule.id)}
+                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add/Edit Rule Form */}
+            {addingRule ? (
+              <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">{editingRuleId ? "Edit Rule" : "Add Rule"}</span>
+                  <button onClick={cancelRuleForm} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">Trigger</label>
+                    <select
+                      value={ruleForm.trigger}
+                      onChange={(e) => setRuleField("trigger", e.target.value)}
+                      className="w-full h-8 rounded-md border border-border bg-background px-2 text-xs"
+                    >
+                      {triggerOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">Priority</label>
+                    <select
+                      value={ruleForm.priority}
+                      onChange={(e) => setRuleField("priority", e.target.value)}
+                      className="w-full h-8 rounded-md border border-border bg-background px-2 text-xs"
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">Task Title</label>
+                  <Input
+                    placeholder='e.g. Follow up with {{name}}'
+                    value={ruleForm.taskTitle}
+                    onChange={(e) => setRuleField("taskTitle", e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">Due in (days)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={ruleForm.dueDaysOffset}
+                    onChange={(e) => setRuleField("dueDaysOffset", parseInt(e.target.value) || 0)}
+                    className="h-8 text-xs w-24"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={cancelRuleForm}>Cancel</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={handleSaveRule} disabled={!ruleForm.taskTitle.trim()}>
+                    {editingRuleId ? "Save" : "Add Rule"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" className="w-full" onClick={() => setAddingRule(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Rule
+              </Button>
             )}
           </div>
 

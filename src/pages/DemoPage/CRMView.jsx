@@ -23,6 +23,8 @@ import { fetchTasks, createTask, updateTask, deleteTask } from "@/services/supab
 import { useAuth } from "@/contexts/AuthContext";
 import { useLeadAlerts } from "@/hooks/useLeadAlerts";
 import { useCustomFields } from "@/hooks/useCustomFields";
+import { usePipelineStages } from "@/hooks/usePipelineStages";
+import { useTaskAutomation } from "@/hooks/useTaskAutomation";
 import { supabase } from "@/lib/supabase";
 import '../../crm.css';
 
@@ -51,12 +53,26 @@ function CRMView() {
     });
   }, [orgId, orgSettings]);
 
+  const handleUpdateLeadDirect = useCallback(async (leadId, updates) => {
+    try {
+      const saved = await updateLead(leadId, updates);
+      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, ...saved } : l));
+      return saved;
+    } catch (err) {
+      console.error('Failed to update lead:', err);
+    }
+  }, []);
+
+  const { stages, stageLabel, stageProgress, addStage, removeStage, renameStage, reorderStages, resetToDefault: resetStagesToDefault } = usePipelineStages(orgSettings, saveOrgSettings, handleUpdateLeadDirect);
+
+  const { rules: automationRules, addRule, removeRule: removeAutomationRule, updateRule: updateAutomationRule, toggleRule, resetToDefaults: resetAutomationDefaults, executeRules } = useTaskAutomation(orgSettings, saveOrgSettings, stages);
+
   const { customFields, addField, removeField, updateField: updateCustomField, setFields } = useCustomFields(
     orgSettings?.custom_fields || [],
     (fields) => saveOrgSettings({ custom_fields: fields })
   );
 
-  const allAlerts = useLeadAlerts(leads);
+  const allAlerts = useLeadAlerts(leads, stages);
   const [dismissedAlertIds, setDismissedAlertIds] = useState(new Set());
   const alerts = allAlerts.filter(a => !dismissedAlertIds.has(a.id));
   const dismissAlert = useCallback((alertId) => {
@@ -113,10 +129,15 @@ function CRMView() {
           setReferrers((prev) => prev.map((r) => r.id === referrer.id ? updated : r));
         }
       }
+      // Auto-create tasks from automation rules
+      const autoTasks = executeRules("new_lead", saved, stageLabel[saved.stage] || "");
+      for (const task of autoTasks) {
+        await handleAddTask(task);
+      }
     } catch (err) {
       console.error('Failed to create lead:', err);
     }
-  }, [referrers, orgId]);
+  }, [referrers, orgId, executeRules, stageLabel]);
 
   const handleAutoOpenHandled = useCallback(() => {
     setAutoOpenLeadId(null);
@@ -158,7 +179,7 @@ function CRMView() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
+        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} stages={stages} />;
       case 'leads':
         return (
           <LeadsPage
@@ -178,10 +199,15 @@ function CRMView() {
             customFields={customFields}
             orgSettings={orgSettings}
             saveOrgSettings={saveOrgSettings}
+            stages={stages}
+            stageLabel={stageLabel}
+            stageProgress={stageProgress}
+            onAddStage={addStage}
+            executeRules={executeRules}
           />
         );
       case 'referrers':
-        return <ReferrersPage leads={leads} setLeads={setLeads} referrers={referrers} setReferrers={setReferrers} alerts={alerts} />;
+        return <ReferrersPage leads={leads} setLeads={setLeads} referrers={referrers} setReferrers={setReferrers} alerts={alerts} stages={stages} />;
       case 'tours':
         return <ToursPage alerts={alerts} />;
       case 'follow-up':
@@ -191,9 +217,9 @@ function CRMView() {
       case 'integrations':
         return <IntegrationsPage alerts={alerts} />;
       case 'settings':
-        return <SettingsPage alerts={alerts} customFields={customFields} onAddField={addField} onRemoveField={removeField} onUpdateField={updateCustomField} orgSettings={orgSettings} saveOrgSettings={saveOrgSettings} />;
+        return <SettingsPage alerts={alerts} customFields={customFields} onAddField={addField} onRemoveField={removeField} onUpdateField={updateCustomField} orgSettings={orgSettings} saveOrgSettings={saveOrgSettings} stages={stages} stageLabel={stageLabel} onAddStage={addStage} onRemoveStage={removeStage} onRenameStage={renameStage} onReorderStages={reorderStages} onResetStages={resetStagesToDefault} leads={leads} automationRules={automationRules} onAddRule={addRule} onRemoveRule={removeAutomationRule} onUpdateRule={updateAutomationRule} onToggleRule={toggleRule} onResetAutomation={resetAutomationDefaults} />;
       default:
-        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
+        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} stages={stages} />;
     }
   };
 

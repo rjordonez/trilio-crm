@@ -2,7 +2,7 @@
  * Creates a PipelineLead object from session data (formData, recordingData, summaryData).
  * Used by RecordingTab and DemoTab to build leads from demo/recording flows.
  */
-export function createLeadFromSession({ formData, recordingData, summaryData, id }) {
+export function createLeadFromSession({ formData, recordingData, summaryData, id, stages = [] }) {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
   const timeStr = now.toLocaleString();
@@ -37,7 +37,7 @@ export function createLeadFromSession({ formData, recordingData, summaryData, id
                'Assisted Living',
     lastContactDate: dateStr,
     facility: "Sunrise Gardens",
-    stage: "inquiry",
+    stage: stages[0]?.key || "inquiry",
     source: "Phone Call",
     inquiryDate: dateStr,
     initialContact: dateStr,

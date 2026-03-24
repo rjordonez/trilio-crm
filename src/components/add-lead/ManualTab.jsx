@@ -41,7 +41,7 @@ const initialForm = {
   notes: "",
 };
 
-export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded, aiPrefill, isProcessing, customFields = [] }) {
+export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdded, aiPrefill, isProcessing, customFields = [], stages = [] }) {
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "Unknown";
   const [form, setForm] = useState(initialForm);
@@ -153,7 +153,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       hoursPerDay: form.hoursPerDay || "",
       lastContactDate: dateStr,
       facility: "",
-      stage: "inquiry",
+      stage: stages[0]?.key || "inquiry",
       score: "cold",
       source: form.source === "Other" ? (form.sourceOther || "Other") : (form.source || "Website"),
       referrerId: form.source === "Referral Partner" ? form.referrerId || null : null,
@@ -405,7 +405,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Title</Label>
-              <Input className="h-9 text-sm" value={partnerForm.contactTitle} onChange={(e) => setPartner("contactTitle", e.target.value)} />
+              <Input placeholder="e.g. Case Manager, Director of Nursing" className="h-9 text-sm" value={partnerForm.contactTitle} onChange={(e) => setPartner("contactTitle", e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Email *</Label>
@@ -433,7 +433,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Notes</Label>
-            <Textarea className="text-sm min-h-[60px]" value={partnerForm.notes} onChange={(e) => setPartner("notes", e.target.value)} />
+            <Textarea placeholder="How we connected, referral preferences..." className="text-sm min-h-[60px]" value={partnerForm.notes} onChange={(e) => setPartner("notes", e.target.value)} />
           </div>
           <Button type="button" size="sm" onClick={handleAddPartner} disabled={!partnerValid || savingPartner}>
             {savingPartner ? "Adding..." : "Add Partner"}

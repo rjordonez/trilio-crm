@@ -26,14 +26,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
-const stageLabels = {
-  inquiry: "Inquiry", assessment_scheduled: "Assessment Scheduled", assessment_completed: "Assessment Completed",
-  proposal_sent: "Proposal Sent", pending_decision: "Pending Decision", closed: "Closed",
-};
+// stageLabels is now derived from the stages prop
 
 const hoursLookup = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
 
-export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers, alerts = [] }) {
+export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers, alerts = [], stages = [] }) {
+  const stageLabels = useMemo(() => {
+    const map = {};
+    stages.forEach((s) => { map[s.key] = s.label; });
+    return map;
+  }, [stages]);
   const { organization } = useAuth();
   const isMobile = useIsMobile();
   const [selectedReferrer, setSelectedReferrer] = useState(null);
@@ -363,6 +365,7 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
           onLeadClick={(lead) => { setSelectedReferrer(null); setSelectedLead(lead); }}
           allLeads={leads}
           allReferrers={localReferrers}
+          stageLabels={stageLabels}
           onUpdateNotes={async (notes) => {
             await updateReferrer(selectedReferrer.id, { notes });
             setReferrers(prev => prev.map(r => r.id === selectedReferrer.id ? { ...r, notes } : r));
@@ -651,7 +654,7 @@ const scoreOrder = { hot: 0, warm: 1, nurture: 2, cold: 3 };
 const stageOrder = { inquiry: 0, assessment_scheduled: 1, assessment_completed: 2, proposal_sent: 3, pending_decision: 4, closed: 5 };
 const scoreColors = { hot: "bg-red-500", warm: "bg-orange-400", nurture: "bg-blue-400", cold: "bg-slate-400" };
 
-function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [], allReferrers = [], onUpdateNotes }) {
+function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads = [], allReferrers = [], onUpdateNotes, stageLabels = {} }) {
   // Find all referrers in the same organization
   const orgName = referrer.organization || referrer.name;
   const orgReferrers = useMemo(() => {

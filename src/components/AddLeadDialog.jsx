@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { transcribeAudio } from "@/services/speechToText";
 import ManualTab from "@/components/add-lead/ManualTab";
 
-export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMobile, referrers = [], onReferrerAdded, customFields = [] }) {
+export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMobile, referrers = [], onReferrerAdded, customFields = [], stages = [] }) {
   const [resetKey, setResetKey] = useState(0);
 
   // Audio import state
@@ -218,6 +218,7 @@ export default function AddLeadDialog({ open, onOpenChange, onLeadCreated, isMob
             aiPrefill={aiPrefill}
             isProcessing={processing}
             customFields={customFields}
+            stages={stages}
           />
         </div>
       </DialogContent>
