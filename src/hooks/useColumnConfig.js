@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
 
 const scoreOptions = ["cold", "hot", "nurture", "warm"];
-const sourceOptions = ["Website", "Digital Ads", "Referral Partner", "Event", "Other"];
-const careOptions = ["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"];
+const sourceOptions = ["Digital Ads", "Website", "Phone Call", "Walk-in", "Referral", "Event"];
+const careOptions = ["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"];
 const stageFilterOptions = ["inquiry", "assessment_scheduled", "assessment_completed", "proposal_sent", "pending_decision", "closed", "rejected"];
 
 export const BUILT_IN_COLUMNS = [

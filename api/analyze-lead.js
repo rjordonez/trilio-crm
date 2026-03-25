@@ -13,17 +13,17 @@ export default async function handler(req) {
     const userPrompt = `Extract lead information from this transcribed audio recording for a home care / senior care CRM. Return JSON with these fields (leave empty string or empty array if not mentioned):
 
 - "name": client/patient full name (the person who needs care)
-- "age": age as string
+- "dateOfBirth": date of birth as string (MM/DD/YYYY or similar format)
 - "contactPerson": name of the person calling or making the inquiry (may be same as client)
 - "contactPhone": phone number if mentioned
 - "contactEmail": email if mentioned
 - "zipcode": zip code if mentioned
 - "relationship": MUST be one of: "Self", "Daughter / Son", "Spouse", "Relative", "Hospital / Social Worker", "Care Manager", "Other" — or empty string
-- "careType": array of care types mentioned, each MUST be one of: "ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"
+- "careType": array of care types mentioned, each MUST be one of: "Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"
 - "hoursPerDay": hours of care needed if mentioned (e.g. "20 hours", "4-6 hours")
 - "timeline": MUST be one of: "Immediately", "Within a few days", "Within a week", "Within a month", "More than a month", "Just researching" — or empty string
 - "budget": MUST be one of: "Under $40/hr", "$40–60/hr", "$60+/hr", "Not sure" — or empty string
-- "source": MUST be one of: "Website", "Digital Ads", "Referral Partner", "Event", "Other" — or empty string. Infer from context if possible.
+- "source": MUST be one of: "Digital Ads", "Website", "Phone Call", "Walk-in", "Referral", "Event" — or empty string. Infer from context if possible.
 - "notes": Concise bullet points of key personal details, concerns, preferences, medical conditions, family dynamics, and anything that doesn't fit the other fields. This is the most important field — capture everything relevant.
 
 ${context ? `\nAdditional context from the user: ${context}` : ''}
@@ -65,14 +65,14 @@ ${transcription}`;
 
     // Validate enum fields
     const validRelationships = ["Self", "Daughter / Son", "Spouse", "Relative", "Hospital / Social Worker", "Care Manager", "Other"];
-    const validCareTypes = ["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"];
+    const validCareTypes = ["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"];
     const validTimelines = ["Immediately", "Within a few days", "Within a week", "Within a month", "More than a month", "Just researching"];
     const validBudgets = ["Under $40/hr", "$40–60/hr", "$60+/hr", "Not sure"];
-    const validSources = ["Website", "Digital Ads", "Referral Partner", "Event", "Other"];
+    const validSources = ["Digital Ads", "Website", "Phone Call", "Walk-in", "Referral", "Event"];
 
     const cleaned = {
       name: result.name || "",
-      age: result.age || "",
+      dateOfBirth: result.dateOfBirth || "",
       contactPerson: result.contactPerson || "",
       contactPhone: result.contactPhone || "",
       contactEmail: result.contactEmail || "",

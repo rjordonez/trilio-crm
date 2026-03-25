@@ -31,9 +31,9 @@ export function createLeadFromSession({ formData, recordingData, summaryData, id
     contactRelation: "Self",
     contactPhone: formData.phone,
     contactEmail: formData.email,
-    careLevel: formData.situation?.includes('ADL') ? 'ADL Support' :
-               formData.situation?.includes('Post-Acute') ? 'Post-Acute' :
-               formData.situation?.includes('Companion') ? 'Companionship' :
+    careLevel: formData.situation?.includes('Memory') ? 'Memory Care' :
+               formData.situation?.includes('Skilled') ? 'Skilled Nursing' :
+               formData.situation?.includes('Independent') ? 'Independent Living' :
                'Assisted Living',
     lastContactDate: dateStr,
     facility: "Sunrise Gardens",

@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/TopBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search, CheckSquare, Square, Link2 } from "lucide-react";
+import { User, Calendar, Heart, LayoutGrid, Table as TableIcon, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, X, Phone, Mail, StickyNote, ArrowRightLeft, Check, Trash2, XCircle, Eye, EyeOff, Search, CheckSquare, Square, Link2 } from "lucide-react";
 import { useNavigation } from "@/contexts/NavigationContext";
 // import { Columns3 } from "lucide-react";
 // import { useColumnConfig, BUILT_IN_COLUMNS } from "@/hooks/useColumnConfig";
@@ -38,11 +38,10 @@ import { defaultTemplates, personalizeContent } from "@/data/emailTemplates";
 // stages, stageLabel, stageProgress are now passed as props from CRMView
 
 const careLevelColors = {
-  "ADL Support": "bg-info/10 text-info",
   "Assisted Living": "bg-success/10 text-success",
-  "Post-Acute": "bg-warning/10 text-warning",
-  "Companionship": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  "Not Sure Yet": "bg-muted text-muted-foreground",
+  "Independent Living": "bg-info/10 text-info",
+  "Memory Care": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  "Skilled Nursing": "bg-warning/10 text-warning",
 };
 
 const scoreColors = {
@@ -52,8 +51,8 @@ const scoreColors = {
   nurture: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
-const sourceOptions = ["Website", "Digital Ads", "Referral Partner", "Event", "Other"];
-const careOptions = ["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"];
+const sourceOptions = ["Digital Ads", "Website", "Phone Call", "Walk-in", "Referral", "Event"];
+const careOptions = ["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"];
 const scoreOptions = ["cold", "hot", "nurture", "warm"];
 
 function formatDate(dateStr) {
@@ -135,6 +134,11 @@ function HeaderFilter({ label, value, options, onChange }) {
       )}
     </div>
   );
+}
+
+function SortIcon({ sortKey: sk, sortDir: sd, columnKey }) {
+  if (sk !== columnKey) return <ArrowUpDown className="h-3 w-3 text-muted-foreground/40" />;
+  return sd === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />;
 }
 
 function StageChangeModal({ lead, open, onOpenChange, onStageChange, isMobile }) {
@@ -357,6 +361,18 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [filters, setFilters] = useState({ stage: "all", source: "all", careLevel: "all", salesRep: "all", score: "all" });
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else { setSortKey(null); setSortDir("asc"); }
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
   const [stageChangeLead, setStageChangeLead] = useState(null);
   const [kanbanCareFilter, setKanbanCareFilter] = useState("all");
   const [showRejected, setShowRejected] = useState(false);
@@ -396,20 +412,33 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
 
   const filteredLeads = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return leads.filter((l) => {
+    const filtered = leads.filter((l) => {
       if (filters.stage !== "all" && l.stage !== filters.stage) return false;
       if (filters.source !== "all" && l.source !== filters.source) return false;
       if (filters.careLevel !== "all" && l.careLevel !== filters.careLevel) return false;
       if (filters.salesRep !== "all" && l.salesRep !== filters.salesRep) return false;
       if (filters.score !== "all" && l.score !== filters.score) return false;
       if (q) {
-        // const customValues = customFields.map(f => l[f.id]).filter(Boolean).join(" ");
         const searchable = [l.name, l.contactPerson, l.contactPhone, l.contactEmail, l.careLevel, l.source, l.salesRep, l.referredBy, l.referPartner].filter(Boolean).join(" ").toLowerCase();
         if (!searchable.includes(q)) return false;
       }
       return true;
     });
-  }, [leads, filters, searchQuery]);
+    if (!sortKey) return filtered;
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      let va = a[sortKey] || "";
+      let vb = b[sortKey] || "";
+      // Date columns
+      if (sortKey === "inquiryDate" || sortKey === "lastContactDate") {
+        return mul * (new Date(va || 0) - new Date(vb || 0));
+      }
+      // String compare
+      va = String(va).toLowerCase();
+      vb = String(vb).toLowerCase();
+      return mul * va.localeCompare(vb);
+    });
+  }, [leads, filters, searchQuery, sortKey, sortDir]);
 
   const kanbanLeads = useMemo(() => filteredLeads.filter((l) => l.stage !== "rejected"), [filteredLeads]);
   const rejectedLeads = useMemo(() => filteredLeads.filter((l) => l.stage === "rejected"), [filteredLeads]);
@@ -1085,26 +1114,51 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
                         />
                       </TableHead>
                     )}
-                    <TableHead className="min-w-[150px] sticky left-0 bg-card z-10 whitespace-nowrap">Prospect Name</TableHead>
+                    <TableHead className="min-w-[150px] sticky left-0 bg-card z-10 whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("name")}>
+                      <div className="inline-flex items-center gap-1">Prospect Name <SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="name" /></div>
+                    </TableHead>
                     <TableHead className="min-w-[90px] whitespace-nowrap">
-                      <HeaderFilter label="Score" value={filters.score} options={scoreOptions} onChange={(v) => setFilters((f) => ({ ...f, score: v }))} />
+                      <div className="inline-flex items-center gap-1">
+                        <HeaderFilter label="Score" value={filters.score} options={scoreOptions} onChange={(v) => setFilters((f) => ({ ...f, score: v }))} />
+                        <button onClick={() => handleSort("score")} className="p-0.5 rounded hover:bg-muted"><SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="score" /></button>
+                      </div>
                     </TableHead>
                     <TableHead className="min-w-[170px] whitespace-nowrap">
-                      <HeaderFilter label="Stage" value={filters.stage} options={[...stages.map((s) => s.key), "rejected"]} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
+                      <div className="inline-flex items-center gap-1">
+                        <HeaderFilter label="Stage" value={filters.stage} options={[...stages.map((s) => s.key), "rejected"]} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
+                        <button onClick={() => handleSort("stage")} className="p-0.5 rounded hover:bg-muted"><SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="stage" /></button>
+                      </div>
                     </TableHead>
                     <TableHead className="min-w-[110px] whitespace-nowrap">
-                      <HeaderFilter label="Source" value={filters.source} options={sourceOptions} onChange={(v) => setFilters((f) => ({ ...f, source: v }))} />
+                      <div className="inline-flex items-center gap-1">
+                        <HeaderFilter label="Source" value={filters.source} options={sourceOptions} onChange={(v) => setFilters((f) => ({ ...f, source: v }))} />
+                        <button onClick={() => handleSort("source")} className="p-0.5 rounded hover:bg-muted"><SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="source" /></button>
+                      </div>
                     </TableHead>
                     <TableHead className="min-w-[130px] whitespace-nowrap">
-                      <HeaderFilter label="Care Type" value={filters.careLevel} options={careOptions} onChange={(v) => setFilters((f) => ({ ...f, careLevel: v }))} />
+                      <div className="inline-flex items-center gap-1">
+                        <HeaderFilter label="Care Type" value={filters.careLevel} options={careOptions} onChange={(v) => setFilters((f) => ({ ...f, careLevel: v }))} />
+                        <button onClick={() => handleSort("careLevel")} className="p-0.5 rounded hover:bg-muted"><SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="careLevel" /></button>
+                      </div>
                     </TableHead>
                     <TableHead className="min-w-[110px] whitespace-nowrap">
-                      <HeaderFilter label="Assign To" value={filters.salesRep} options={salesRepOptions} onChange={(v) => setFilters((f) => ({ ...f, salesRep: v }))} />
+                      <div className="inline-flex items-center gap-1">
+                        <HeaderFilter label="Assign To" value={filters.salesRep} options={salesRepOptions} onChange={(v) => setFilters((f) => ({ ...f, salesRep: v }))} />
+                        <button onClick={() => handleSort("salesRep")} className="p-0.5 rounded hover:bg-muted"><SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="salesRep" /></button>
+                      </div>
                     </TableHead>
-                    <TableHead className="min-w-[120px] whitespace-nowrap">Contact</TableHead>
-                    <TableHead className="min-w-[95px] whitespace-nowrap">Inquiry Date</TableHead>
-                    <TableHead className="min-w-[95px] whitespace-nowrap">Last Contacted</TableHead>
-                    <TableHead className="min-w-[180px] whitespace-nowrap">Next Activity</TableHead>
+                    <TableHead className="min-w-[120px] whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("contactPerson")}>
+                      <div className="inline-flex items-center gap-1">Contact <SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="contactPerson" /></div>
+                    </TableHead>
+                    <TableHead className="min-w-[95px] whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("inquiryDate")}>
+                      <div className="inline-flex items-center gap-1">Inquiry Date <SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="inquiryDate" /></div>
+                    </TableHead>
+                    <TableHead className="min-w-[95px] whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("lastContactDate")}>
+                      <div className="inline-flex items-center gap-1">Last Contacted <SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="lastContactDate" /></div>
+                    </TableHead>
+                    <TableHead className="min-w-[180px] whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("nextActivity")}>
+                      <div className="inline-flex items-center gap-1">Next Activity <SortIcon sortKey={sortKey} sortDir={sortDir} columnKey="nextActivity" /></div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

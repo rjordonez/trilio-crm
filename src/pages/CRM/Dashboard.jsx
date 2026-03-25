@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import TopBar from "@/components/TopBar";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { Users, Plus, Trash2, CheckSquare } from "lucide-react";
+import { Users, Plus, Trash2, CheckSquare, Calendar, Home, TrendingUp, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -43,6 +43,7 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
     stages.forEach((s) => { map[s.key] = s.label; });
     return map;
   }, [stages]);
+  const [dateRange, setDateRange] = useState("this_month");
   const [taskFilter, setTaskFilter] = useState("today");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -50,10 +51,51 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
   const [newDueDate, setNewDueDate] = useState(getToday());
   const [newPriority, setNewPriority] = useState("normal");
 
+  const dateFilteredLeads = useMemo(() => {
+    const now = new Date();
+    let start;
+    switch (dateRange) {
+      case "this_week": {
+        const d = new Date(now);
+        d.setDate(d.getDate() - d.getDay());
+        start = d.toISOString().split("T")[0];
+        break;
+      }
+      case "this_month":
+        start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        break;
+      case "this_quarter": {
+        const q = Math.floor(now.getMonth() / 3) * 3;
+        start = `${now.getFullYear()}-${String(q + 1).padStart(2, "0")}-01`;
+        break;
+      }
+      case "this_year":
+        start = `${now.getFullYear()}-01-01`;
+        break;
+      default:
+        start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    }
+    return leads.filter((l) => (l.inquiryDate || l.initialContact || "") >= start);
+  }, [leads, dateRange]);
+
   const activeLeads = useMemo(
     () => leads.filter((l) => l.stage && l.stage !== "rejected" && l.stage !== "closed"),
     [leads]
   );
+
+  // Conversion metrics
+  const conversionMetrics = useMemo(() => {
+    const total = dateFilteredLeads.length || 1;
+    const tourStages = new Set(["assessment_scheduled", "assessment_completed", "proposal_sent", "pending_decision", "closed"]);
+    const moveInStages = new Set(["closed"]);
+    const tours = dateFilteredLeads.filter((l) => tourStages.has(l.stage)).length;
+    const moveIns = dateFilteredLeads.filter((l) => moveInStages.has(l.stage)).length;
+    return {
+      inquiryToTour: Math.round((tours / total) * 100),
+      inquiryToMI: Math.round((moveIns / total) * 100),
+      tourToMI: tours > 0 ? Math.round((moveIns / tours) * 100) : 0,
+    };
+  }, [dateFilteredLeads]);
 
   const leadSources = useMemo(() => {
     const counts = {};
@@ -267,17 +309,53 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
           )}
         </div>
 
-        {/* Active Leads metric */}
-        <div className="max-w-xs">
+        {/* Date Filter */}
+        <div className="flex justify-end">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="h-8 rounded-md border border-border bg-background px-3 text-xs"
+          >
+            <option value="this_week">This Week</option>
+            <option value="this_month">This Month</option>
+            <option value="this_quarter">This Quarter</option>
+            <option value="this_year">This Year</option>
+          </select>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-muted-foreground font-medium">Active Leads</span>
               <Users className="h-4 w-4 text-muted-foreground/60" />
             </div>
             <p className="font-display font-bold text-foreground text-2xl">{activeLeads.length}</p>
-            <span className="text-xs text-muted-foreground">
-              {leads.length} total
-            </span>
+            <span className="text-xs text-muted-foreground">{leads.length} total</span>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground font-medium">Tours This Week</span>
+              <CalendarDays className="h-4 w-4 text-muted-foreground/60" />
+            </div>
+            <p className="font-display font-bold text-foreground text-2xl">0</p>
+            <span className="text-xs text-muted-foreground">0 vs last week</span>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground font-medium">Occupancy Rate</span>
+              <Home className="h-4 w-4 text-muted-foreground/60" />
+            </div>
+            <p className="font-display font-bold text-foreground text-2xl">0%</p>
+            <span className="text-xs text-muted-foreground">0% vs last month</span>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground font-medium">Move-ins (MTD)</span>
+              <TrendingUp className="h-4 w-4 text-muted-foreground/60" />
+            </div>
+            <p className="font-display font-bold text-foreground text-2xl">0</p>
+            <span className="text-xs text-muted-foreground">0 vs last month</span>
           </div>
         </div>
 
@@ -285,7 +363,7 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
           {/* Lead Sources */}
           <div className="rounded-lg border border-border bg-card p-6 shadow-crm-sm">
             <h3 className="font-display text-sm font-semibold text-foreground mb-1">Lead Sources</h3>
-            <p className="text-xs text-muted-foreground mb-4">{totalLeads} total leads</p>
+            <p className="text-xs text-muted-foreground mb-4">{totalLeads} total leads this month</p>
             {totalLeads > 0 ? (
               <>
                 <div className="h-56">
@@ -332,33 +410,52 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
             )}
           </div>
 
-          {/* Sales Funnel */}
-          <div className="rounded-lg border border-border bg-card p-6 shadow-crm-sm">
-            <h3 className="font-display text-sm font-semibold text-foreground mb-1">Sales Funnel</h3>
-            <p className="text-xs text-muted-foreground mb-4">Current pipeline</p>
-            {leads.length > 0 ? (
-              <div className="flex flex-col items-center gap-1.5 px-4">
-                {funnel.map((stage, i) => {
-                  const maxCount = Math.max(...funnel.map((s) => s.count), 1);
-                  const minWidth = 40;
-                  const pct = stage.count > 0 ? minWidth + ((100 - minWidth) * stage.count) / maxCount : minWidth;
-                  return (
-                    <div
-                      key={stage.stage}
-                      className="flex items-center justify-center text-[11px] font-medium text-primary-foreground rounded-md transition-all py-2.5 px-3"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: `hsl(var(--primary) / ${1 - i * 0.12})`,
-                      }}
-                    >
-                      {stage.stage} ({stage.count})
-                    </div>
-                  );
-                })}
+          {/* Right column: Conversion Metrics + Sales Funnel */}
+          <div className="space-y-6">
+            {/* Conversion Metrics */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm text-center">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Inquiry → Tour</p>
+                <p className="font-display font-bold text-lg text-foreground">{conversionMetrics.inquiryToTour}%</p>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">No leads yet</p>
-            )}
+              <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm text-center">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Inquiry → MI</p>
+                <p className="font-display font-bold text-lg text-foreground">{conversionMetrics.inquiryToMI}%</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4 shadow-crm-sm text-center">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Tour → MI</p>
+                <p className="font-display font-bold text-lg text-foreground">{conversionMetrics.tourToMI}%</p>
+              </div>
+            </div>
+
+            {/* Sales Funnel */}
+            <div className="rounded-lg border border-border bg-card p-6 shadow-crm-sm">
+              <h3 className="font-display text-sm font-semibold text-foreground mb-1">Sales Funnel</h3>
+              <p className="text-xs text-muted-foreground mb-4">New inquiries month-to-date</p>
+              {leads.length > 0 ? (
+                <div className="flex flex-col items-center gap-1.5 px-4">
+                  {funnel.map((stage, i) => {
+                    const maxCount = Math.max(...funnel.map((s) => s.count), 1);
+                    const minWidth = 40;
+                    const pct = stage.count > 0 ? minWidth + ((100 - minWidth) * stage.count) / maxCount : minWidth;
+                    return (
+                      <div
+                        key={stage.stage}
+                        className="flex items-center justify-center text-[11px] font-medium text-primary-foreground rounded-md transition-all py-2.5 px-3"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: `hsl(var(--primary) / ${1 - i * 0.12})`,
+                        }}
+                      >
+                        {stage.stage} ({stage.count})
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No leads yet</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

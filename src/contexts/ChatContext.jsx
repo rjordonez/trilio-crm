@@ -12,7 +12,7 @@ export function ChatProvider({ leads, referrers, tasks, children }) {
 
   const leadsContext = allLeads.map((lead) => ({
     name: lead.name,
-    age: lead.age,
+    dateOfBirth: lead.dateOfBirth,
     stage: lead.stage,
     score: lead.score,
     careLevel: lead.careLevel,

@@ -9,13 +9,17 @@ import { Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const partnerTypes = [
-  "Hospital / Facility",
-  "Physician / Clinician",
   "Social Worker / Case Manager",
-  "Community Organization / Nonprofit",
-  "Current Client / Family",
-  "Home Health Agency",
+  "Hospital / Discharge Planner",
+  "Physician / Clinician",
+  "Home Health / Hospice",
+  "Paid Network",
   "Placement Specialist",
+  "Family / Friend",
+  "Current Resident",
+  "Insurance / LTC Specialist",
+  "Financial Advisor / Wealth Manager",
+  "Community Organization / Non-profit",
   "Other",
 ];
 
@@ -58,9 +62,7 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
       email: form.email,
       notes: form.notes,
       referredLeadIds: [],
-      serviceHoursRequested: 0,
-      commissionRate: 0,
-      totalCommission: 0,
+      totalContractValue: 0,
       status: "active",
       lastReferralDate: new Date().toISOString().split("T")[0],
     };

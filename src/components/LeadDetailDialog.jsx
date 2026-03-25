@@ -27,11 +27,10 @@ function daysAgoText(dateStr) {
 }
 
 const careLevelColors = {
-  "ADL Support": "bg-info/10 text-info border-info/20",
   "Assisted Living": "bg-success/10 text-success border-success/20",
-  "Post-Acute": "bg-warning/10 text-warning border-warning/20",
-  "Companionship": "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-  "Not Sure Yet": "bg-muted text-muted-foreground border-border",
+  "Independent Living": "bg-info/10 text-info border-info/20",
+  "Memory Care": "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+  "Skilled Nursing": "bg-warning/10 text-warning border-warning/20",
 };
 
 const scoreColors = {
@@ -81,34 +80,6 @@ function EditableScoreBadge({ score, onChange }) {
 }
 
 // stageLabel is now passed via props through the stages prop
-
-function generateMockSummary(lead) {
-  const n = lead.intakeNote;
-
-  let summary = `**${lead.name}** is a ${lead.careLevel.toLowerCase()} prospect currently in the **${stageLabel[lead.stage]}** stage. ${n.caller} reached out via ${n.leadSource.toLowerCase()}.
-
-**Key situation:** ${n.situationSummary[0]}. ${n.situationSummary.length > 1 ? n.situationSummary[1] + "." : ""}
-
-**Care needs** include ${n.careNeeds.slice(0, 3).join(", ").toLowerCase()}. The family's budget is ${n.budgetFinancial[0].toLowerCase()}.
-
-**Decision makers:** ${n.decisionMakers.join("; ")}. **Timeline:** ${n.timeline.toLowerCase()}.
-
-**Main concerns:** ${n.objections.join("; ").toLowerCase()}.`;
-
-  const tours = lead.tourNotes || [];
-  if (tours.length > 0) {
-    summary += `\n\n**Tours taken: ${tours.length}**`;
-    tours.forEach((t, i) => {
-      summary += `\n**Tour ${i + 1}** (${formatTimelineDate(t.tourDate)}) — ${t.attendees}: ${t.summary}`;
-    });
-  }
-
-  summary += `
-
-**Sales assessment:** ${n.salesRepAssessment.join(". ")}. **Next steps:** ${n.nextStep.join("; ")}.`;
-
-  return summary;
-}
 
 const interactionIcons = {
   call: Phone,
@@ -492,13 +463,24 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
 
   if (!lead) return null;
 
-  const handleAiSummary = () => {
+  const handleAiSummary = async () => {
     setAiLoading(true);
     setAiSummary(null);
-    setTimeout(() => {
-      setAiSummary(generateMockSummary(lead));
+    try {
+      const res = await fetch("/api/summarize-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead, interactions }),
+      });
+      if (!res.ok) throw new Error("Failed to generate summary");
+      const data = await res.json();
+      setAiSummary(data.summary);
+    } catch (err) {
+      console.error("AI summary error:", err);
+      setAiSummary("Failed to generate summary. Please try again.");
+    } finally {
       setAiLoading(false);
-    }, 1500);
+    }
   };
 
   const handleClose = (openState) => {
@@ -546,6 +528,15 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent fullScreen={isMobile} className={isMobile ? "flex flex-col overflow-hidden" : "max-w-2xl max-h-[85vh] overflow-y-auto"}>
+        {/* AI Summary button — top-right, left of the X */}
+        <button
+          onClick={handleAiSummary}
+          disabled={aiLoading}
+          title="AI Summary"
+          className="absolute right-10 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity disabled:pointer-events-none"
+        >
+          {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        </button>
         <DialogHeader className={isMobile ? "space-y-1 shrink-0" : ""}>
           <div className="flex items-center justify-between">
             {!isMobile && (
@@ -618,6 +609,26 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </div>
         </DialogHeader>
 
+        {/* AI Summary (collapsible) */}
+        {(aiSummary || aiLoading) && (
+          <div className="mt-1 p-3 rounded-md bg-muted/50 border border-border text-sm leading-relaxed">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3" /> AI Summary
+              </div>
+              <button onClick={() => { setAiSummary(null); setAiLoading(false); }} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            {aiLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...
+              </div>
+            ) : (
+              <div className="text-xs leading-relaxed [&_strong]:text-foreground" dangerouslySetInnerHTML={{ __html: aiSummary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+            )}
+          </div>
+        )}
 
         <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
           <TabsList className="w-full grid grid-cols-3 shrink-0">

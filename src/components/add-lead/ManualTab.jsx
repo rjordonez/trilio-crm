@@ -11,19 +11,23 @@ import { createReferrer } from "@/services/supabaseReferrers";
 import { toast } from "@/hooks/use-toast";
 
 const partnerTypes = [
-  "Hospital / Facility",
-  "Physician / Clinician",
   "Social Worker / Case Manager",
-  "Community Organization / Nonprofit",
-  "Current Client / Family",
-  "Home Health Agency",
+  "Hospital / Discharge Planner",
+  "Physician / Clinician",
+  "Home Health / Hospice",
+  "Paid Network",
   "Placement Specialist",
+  "Family / Friend",
+  "Current Resident",
+  "Insurance / LTC Specialist",
+  "Financial Advisor / Wealth Manager",
+  "Community Organization / Non-profit",
   "Other",
 ];
 
 const initialForm = {
   name: "",
-  age: "",
+  dateOfBirth: "",
   contactPerson: "",
   contactPhone: "",
   contactEmail: "",
@@ -112,9 +116,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         email: partnerForm.email,
         notes: partnerForm.notes,
         referredLeadIds: [],
-        serviceHoursRequested: 0,
-        commissionRate: 0,
-        totalCommission: 0,
+        totalContractValue: 0,
         status: "active",
         lastReferralDate: new Date().toISOString().split("T")[0],
       };
@@ -144,21 +146,21 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
     const lead = {
       id: `manual-lead-${Date.now()}`,
       name: form.name || "Unknown",
-      age: form.age || "",
+      dateOfBirth: form.dateOfBirth || "",
       contactPerson: form.contactPerson || form.name || "Unknown",
       contactRelation: form.relationship || "",
       contactPhone: form.contactPhone || "",
       contactEmail: form.contactEmail || "",
-      careLevel: form.careType.length > 0 ? form.careType.join(", ") : "Not Sure Yet",
+      careLevel: form.careType.length > 0 ? form.careType.join(", ") : "",
       hoursPerDay: form.hoursPerDay || "",
       lastContactDate: dateStr,
       facility: "",
       stage: stages[0]?.key || "inquiry",
       score: "cold",
-      source: form.source === "Other" ? (form.sourceOther || "Other") : (form.source || "Website"),
-      referrerId: form.source === "Referral Partner" ? form.referrerId || null : null,
-      referredBy: form.source === "Referral Partner" ? form.referredBy || "" : "",
-      referPartner: form.source === "Referral Partner" ? form.referPartner || "" : "",
+      source: form.source || "Website",
+      referrerId: form.source === "Referral" ? form.referrerId || null : null,
+      referredBy: form.source === "Referral" ? form.referredBy || "" : "",
+      referPartner: form.source === "Referral" ? form.referPartner || "" : "",
       inquiryDate: dateStr,
       initialContact: dateStr,
       nextActivity: "Follow-up call scheduled",
@@ -166,7 +168,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       budget: form.budget || "",
       timeline: form.timeline || "",
       intakeNote: {
-        leadSource: form.source === "Other" ? (form.sourceOther || "Other") : (form.source || "Manual Entry"),
+        leadSource: form.source || "Website",
         zipcode: form.zipcode || "",
         caller: `${form.contactPerson || form.name}`,
         dateTime: timeStr,
@@ -191,15 +193,15 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <fieldset disabled={isProcessing} className={`space-y-4 ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}>
-      {/* Row 1: Client Name, Age */}
+      {/* Row 1: Client Name, Date of Birth */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Client Name</Label>
           <Input className="h-9 text-sm" value={form.name} onChange={(e) => set("name", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Age</Label>
-          <Input type="number" className="h-9 text-sm" value={form.age} onChange={(e) => set("age", e.target.value)} />
+          <Label className="text-xs">Date of Birth</Label>
+          <Input type="date" className="h-9 text-sm" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} />
         </div>
       </div>
 
@@ -210,7 +212,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
           <Input className="h-9 text-sm" value={form.contactPerson} onChange={(e) => set("contactPerson", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Relationship to Client</Label>
+          <Label className="text-xs">Relationship to Prospect</Label>
           <Select value={form.relationship} onValueChange={(v) => set("relationship", v)}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="Select relationship" />
@@ -252,7 +254,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       <div className="space-y-1.5">
         <Label className="text-xs">Type of Care</Label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {["ADL Support", "Assisted Living", "Post-Acute", "Companionship", "Not Sure Yet"].map((type) => (
+          {["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"].map((type) => (
             <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox
                 checked={form.careType.includes(type)}
@@ -315,20 +317,21 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Lead Source</Label>
-          <Select value={form.source} onValueChange={(v) => { set("source", v); if (v !== "Other") set("sourceOther", ""); }}>
+          <Select value={form.source} onValueChange={(v) => set("source", v)}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="Select source" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Website">Website</SelectItem>
               <SelectItem value="Digital Ads">Digital Ads</SelectItem>
-              <SelectItem value="Referral Partner">Referral Partner</SelectItem>
+              <SelectItem value="Website">Website</SelectItem>
+              <SelectItem value="Phone Call">Phone Call</SelectItem>
+              <SelectItem value="Walk-in">Walk-in</SelectItem>
+              <SelectItem value="Referral">Referral</SelectItem>
               <SelectItem value="Event">Event</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {form.source === "Referral Partner" && !addingPartner && (
+        {form.source === "Referral" && !addingPartner && (
           <div className="space-y-1.5">
             <Label className="text-xs">Referral Partner</Label>
             <div className="flex items-center gap-2">
@@ -358,7 +361,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
             </div>
           </div>
         )}
-        {form.source === "Referral Partner" && !addingPartner && form.referPartner && contactPersonOptions.length > 1 && (
+        {form.source === "Referral" && !addingPartner && form.referPartner && contactPersonOptions.length > 1 && (
           <div className="space-y-1.5">
             <Label className="text-xs">Referred By (Contact Person)</Label>
             <Select value={form.referrerId} onValueChange={(v) => {
@@ -377,16 +380,10 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
             </Select>
           </div>
         )}
-        {form.source === "Other" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs">Specify Source</Label>
-            <Input className="h-9 text-sm" value={form.sourceOther} onChange={(e) => set("sourceOther", e.target.value)} />
-          </div>
-        )}
       </div>
 
       {/* Inline Add Partner Form */}
-      {form.source === "Referral Partner" && addingPartner && (
+      {form.source === "Referral" && addingPartner && (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Add New Partner</Label>

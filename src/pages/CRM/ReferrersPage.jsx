@@ -28,7 +28,7 @@ import { toast } from "@/hooks/use-toast";
 
 // stageLabels is now derived from the stages prop
 
-const hoursLookup = { "Less than 4 hours": 3, "4–6 hours": 5, "8–12 hours": 10, "Overnight": 10, "24 hour": 24, "Not sure": 0 };
+const contractValueLookup = (lead) => lead.contractValue != null ? lead.contractValue : 0;
 
 export default function ReferrersPage({ leads = [], setLeads, referrers = [], setReferrers, alerts = [], stages = [] }) {
   const stageLabels = useMemo(() => {
@@ -109,8 +109,8 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
       (r.referredLeadIds || []).forEach(id => {
         const lead = leads.find(l => l.id === id);
         if (lead) {
-          const leadHours = lead.serviceHours != null ? lead.serviceHours : (hoursLookup[lead.hoursPerDay] || 0);
-          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, hours: leadHours, partnerName: r.name, partnerId: r.id });
+          const value = contractValueLookup(lead);
+          result.push({ ...lead, rowKey: `${r.id}-${lead.id}`, contractValue: value, partnerName: r.name, partnerId: r.id });
         }
       });
     });
@@ -132,9 +132,9 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
     );
   }, [allReferredLeads, filterPartner, filterRep, filterCare]);
 
-  const displayedTotalHours = useMemo(() => {
+  const displayedTotalValue = useMemo(() => {
     const subset = selectedRowKeys.size > 0 ? filteredLeads.filter(l => selectedRowKeys.has(l.rowKey)) : filteredLeads;
-    return subset.reduce((s, l) => s + (editingHours[l.rowKey] ?? l.hours), 0);
+    return subset.reduce((s, l) => s + (editingHours[l.rowKey] ?? l.contractValue ?? 0), 0);
   }, [filteredLeads, selectedRowKeys, editingHours]);
 
   const SortableHead = ({ label, sortKeyVal }) => (
@@ -297,7 +297,7 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
                       </SelectContent>
                     </Select>
                   </TableHead>
-                  <TableHead className="text-center">Hours</TableHead>
+                  <TableHead className="text-center">Contract Value</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,17 +325,18 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <EditableHoursCell
-                        value={editingHours[lead.rowKey] ?? lead.hours}
+                        value={editingHours[lead.rowKey] ?? lead.contractValue ?? 0}
                         onChange={(val) => setEditingHours(prev => ({ ...prev, [lead.rowKey]: val }))}
                         onSave={(val) => {
-                          if (val !== lead.hours) {
-                            lead.serviceHours = val;
-                            updateLead(lead.id, { serviceHours: val }).catch(console.error);
+                          if (val !== lead.contractValue) {
+                            lead.contractValue = val;
+                            updateLead(lead.id, { contractValue: val }).catch(console.error);
                             if (setLeads) {
-                              setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, serviceHours: val } : l));
+                              setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, contractValue: val } : l));
                             }
                           }
                         }}
+                        prefix="$"
                       />
                     </TableCell>
                   </TableRow>
@@ -344,10 +345,10 @@ export default function ReferrersPage({ leads = [], setLeads, referrers = [], se
               <TableFooter>
                 <TableRow>
                   <TableCell colSpan={5} className="text-right text-sm font-semibold text-foreground">
-                    Total Hours {selectedRowKeys.size > 0 ? `(${selectedRowKeys.size} selected)` : `(${filteredLeads.length} leads)`}
+                    Total Value {selectedRowKeys.size > 0 ? `(${selectedRowKeys.size} selected)` : `(${filteredLeads.length} leads)`}
                   </TableCell>
                   <TableCell className="text-center font-display text-base font-bold text-foreground">
-                    {displayedTotalHours}h
+                    ${displayedTotalValue.toLocaleString()}
                   </TableCell>
                 </TableRow>
               </TableFooter>
@@ -495,7 +496,7 @@ function LeadGroupNode({ data }) {
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sc[lead.score] || "bg-slate-300"}`} />
             <p className="text-[9px] font-medium text-primary/80 truncate flex-1">{lead.name}</p>
             <p className="text-[8px] text-muted-foreground shrink-0">
-              {lead.stage === "closed" ? `Closed · ${lead.serviceHours ?? 0}h` : (data.stageLabels[lead.stage] || lead.stage)}
+              {lead.stage === "closed" ? `Closed · $${(lead.contractValue ?? 0).toLocaleString()}` : (data.stageLabels[lead.stage] || lead.stage)}
             </p>
           </div>
         ))}
@@ -520,7 +521,7 @@ function ReferralTree({ orgName, orgStats, referrer, contactPersons, contactPers
       type: "org",
       data: {
         label: orgName,
-        sub: `${referrer.type} · ${orgStats.total} referrals · ${orgStats.closed > 0 ? Math.round(orgStats.totalHours / orgStats.closed) : 0} avg.h/closed`,
+        sub: `${referrer.type} · ${orgStats.total} referrals · ${orgStats.conversionRate}% conv. · $${orgStats.totalValue.toLocaleString()}`,
       },
       position: { x: 0, y: 0 },
       sourcePosition: Position.Bottom,
@@ -537,7 +538,7 @@ function ReferralTree({ orgName, orgStats, referrer, contactPersons, contactPers
         type: "contact",
         data: {
           label: cpName,
-          sub: `${cpLeads.length} ref${cpLeads.length !== 1 ? "s" : ""}${cpStat.closed > 0 ? ` · ${Math.round(cpStat.totalHours / cpStat.closed)} avg.h/closed` : ""}`,
+          sub: `${cpLeads.length} ref${cpLeads.length !== 1 ? "s" : ""}${cpStat.closed > 0 ? ` · ${cpStat.conversionRate}% conv. · $${cpStat.totalValue.toLocaleString()}` : ""}`,
           isPrimary: cpName === referrer.contactPerson,
         },
         position: { x: 0, y: 0 },
@@ -611,7 +612,7 @@ function SnapshotKPI({ icon: Icon, label, value, prev, current }) {
   );
 }
 
-function EditableHoursCell({ value, onChange, onSave }) {
+function EditableHoursCell({ value, onChange, onSave, prefix = "" }) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef(null);
 
@@ -644,7 +645,7 @@ function EditableHoursCell({ value, onChange, onSave }) {
       onClick={() => setEditing(true)}
       className="inline-flex items-center justify-center gap-1 cursor-pointer hover:bg-muted/40 rounded px-2 py-0.5 transition-colors"
     >
-      <span className="font-display font-semibold text-foreground">{value}h</span>
+      <span className="font-display font-semibold text-foreground">{prefix}{value.toLocaleString()}</span>
       <Pencil className="h-2.5 w-2.5 text-muted-foreground/40" />
     </span>
   );
@@ -730,12 +731,12 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
     contactPersons.forEach(name => {
       const leads = contactPersonLeadsMap[name] || [];
       const closed = leads.filter(l => l.stage === "closed").length;
-      const totalHours = leads.filter(l => l.stage === "closed").reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
+      const totalValue = leads.filter(l => l.stage === "closed").reduce((s, l) => s + contractValueLookup(l), 0);
       stats[name] = {
         count: leads.length,
         closed,
         conversionRate: leads.length > 0 ? Math.round((closed / leads.length) * 100) : 0,
-        totalHours,
+        totalValue,
       };
     });
     return stats;
@@ -744,20 +745,20 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
   // Overall org stats
   const orgStats = useMemo(() => {
     const closed = allOrgLeads.filter(l => l.stage === "closed").length;
-    const totalHours = allOrgLeads.filter(l => l.stage === "closed").reduce((s, l) => s + ((l.serviceHours != null ? l.serviceHours : (hoursLookup[l.hoursPerDay] || 0))), 0);
-    let topByCount = null, topByHours = null;
+    const totalValue = allOrgLeads.filter(l => l.stage === "closed").reduce((s, l) => s + contractValueLookup(l), 0);
+    let topByCount = null, topByValue = null;
     contactPersons.forEach(name => {
       const s = contactPersonStats[name];
       if (!topByCount || s.count > contactPersonStats[topByCount].count) topByCount = name;
-      if (!topByHours || s.totalHours > contactPersonStats[topByHours].totalHours) topByHours = name;
+      if (!topByValue || s.totalValue > contactPersonStats[topByValue].totalValue) topByValue = name;
     });
     return {
       total: allOrgLeads.length,
       closed,
       conversionRate: allOrgLeads.length > 0 ? Math.round((closed / allOrgLeads.length) * 100) : 0,
-      totalHours,
+      totalValue,
       topByCount,
-      topByHours,
+      topByValue,
     };
   }, [allOrgLeads, contactPersons, contactPersonStats]);
 
@@ -869,7 +870,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                         <TableHead className="min-w-[120px] whitespace-nowrap">Contact</TableHead>
                         <TableHead className="min-w-[100px] whitespace-nowrap">Care Type</TableHead>
                         {contactPersons.length > 1 && <TableHead className="min-w-[110px] whitespace-nowrap">Referred By</TableHead>}
-                        <TableHead className="min-w-[80px] whitespace-nowrap">Hours</TableHead>
+                        <TableHead className="min-w-[100px] whitespace-nowrap">Contract Value</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -892,7 +893,7 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                             <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.contactPerson}{lead.contactRelation ? ` (${lead.contactRelation})` : ""}</TableCell>
                             <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.careLevel}</TableCell>
                             {contactPersons.length > 1 && <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.referredBy || "—"}</TableCell>}
-                            <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.hoursPerDay || "—"}</TableCell>
+                            <TableCell className="text-muted-foreground whitespace-nowrap text-xs">{lead.contractValue ? `$${lead.contractValue.toLocaleString()}` : "—"}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -933,8 +934,8 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                   <span className="font-semibold text-foreground">{orgStats.conversionRate}% ({orgStats.closed} closed)</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Total hours</span>
-                  <span className="font-semibold text-foreground">{orgStats.totalHours}h</span>
+                  <span className="text-muted-foreground">Total contract value</span>
+                  <span className="font-semibold text-foreground">${orgStats.totalValue.toLocaleString()}</span>
                 </div>
                 {orgStats.topByCount && contactPersons.length > 1 && (
                   <div className="flex items-center justify-between">
@@ -942,10 +943,10 @@ function ReferrerDetailDialog({ referrer, open, onClose, onLeadClick, allLeads =
                     <span className="font-semibold text-foreground">{orgStats.topByCount} ({contactPersonStats[orgStats.topByCount]?.count})</span>
                   </div>
                 )}
-                {orgStats.topByHours && contactPersons.length > 1 && (
+                {orgStats.topByValue && contactPersons.length > 1 && (
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Highest value</span>
-                    <span className="font-semibold text-foreground">{orgStats.topByHours} ({contactPersonStats[orgStats.topByHours]?.totalHours}h)</span>
+                    <span className="font-semibold text-foreground">{orgStats.topByValue} (${contactPersonStats[orgStats.topByValue]?.totalValue.toLocaleString()})</span>
                   </div>
                 )}
               </div>
