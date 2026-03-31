@@ -2,11 +2,12 @@ import { useMemo, useCallback } from "react";
 
 const DEFAULT_STAGES = [
   { key: "inquiry", label: "Inquiry" },
-  { key: "assessment_scheduled", label: "Assessment Scheduled" },
-  { key: "assessment_completed", label: "Assessment Completed" },
-  { key: "proposal_sent", label: "Proposal Sent" },
-  { key: "pending_decision", label: "Pending Decision" },
-  { key: "closed", label: "Closed" },
+  { key: "connection", label: "Connection" },
+  { key: "pre_tour", label: "Pre-tour" },
+  { key: "post_tour", label: "Post-tour" },
+  { key: "deposit", label: "Deposit" },
+  { key: "move_in", label: "Move-in" },
+  { key: "declined", label: "Declined" },
 ];
 
 function generateKey(label) {

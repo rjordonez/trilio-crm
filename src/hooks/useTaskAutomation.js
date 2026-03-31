@@ -9,6 +9,30 @@ const DEFAULT_RULES = [
     dueDaysOffset: 1,
     priority: "normal",
   },
+  {
+    id: "default_pre_tour",
+    trigger: "pre_tour",
+    enabled: true,
+    taskTitle: "Schedule tour for {{name}}",
+    dueDaysOffset: 2,
+    priority: "normal",
+  },
+  {
+    id: "default_post_tour",
+    trigger: "post_tour",
+    enabled: true,
+    taskTitle: "Send follow-up after tour for {{name}}",
+    dueDaysOffset: 1,
+    priority: "high",
+  },
+  {
+    id: "default_deposit",
+    trigger: "deposit",
+    enabled: true,
+    taskTitle: "Confirm deposit received for {{name}}",
+    dueDaysOffset: 0,
+    priority: "high",
+  },
 ];
 
 function generateRuleId() {

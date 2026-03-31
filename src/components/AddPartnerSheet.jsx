@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const partnerTypes = [
   "Social Worker / Case Manager",
@@ -36,6 +37,7 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
   const [addingNew, setAddingNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [localNames, setLocalNames] = useState([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   const existingPartners = useMemo(() => {
     const names = [...referrers.map((r) => r.organization || r.name).filter(Boolean), ...localNames];
@@ -46,11 +48,14 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
 
   const isValid = form.name && form.contactPerson && form.email && form.type;
 
-  const handleSubmit = () => {
-    if (!isValid) {
-      toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
-      return;
-    }
+  const isDuplicate = useMemo(() => {
+    if (!form.name) return false;
+    return referrers.some(
+      (r) => (r.organization || r.name || "").toLowerCase() === form.name.toLowerCase()
+    );
+  }, [form.name, referrers]);
+
+  const submitPartner = () => {
     const newPartner = {
       id: `ref-${Date.now()}`,
       name: form.name,
@@ -72,6 +77,18 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
     setNewName("");
     onOpenChange(false);
     toast({ title: "Partner added", description: `${newPartner.name} has been added successfully.` });
+  };
+
+  const handleSubmit = () => {
+    if (!isValid) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+    if (isDuplicate) {
+      setShowDuplicateWarning(true);
+      return;
+    }
+    submitPartner();
   };
 
   const handleAddNew = () => {
@@ -160,6 +177,23 @@ export default function AddPartnerSheet({ open, onOpenChange, onAdd, referrers =
           </div>
         </div>
       </SheetContent>
+
+      <AlertDialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate Partner</AlertDialogTitle>
+            <AlertDialogDescription>
+              A partner named "{form.name}" already exists. Are you sure you want to add another one?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowDuplicateWarning(false); submitPartner(); }}>
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

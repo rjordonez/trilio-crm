@@ -9,12 +9,14 @@ import {
   Sparkles,
   Bot,
   Settings,
+  CheckSquare,
 } from "lucide-react";
 
 const navItems = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { id: "leads", icon: UserPlus, label: "Leads" },
   { id: "referrers", icon: Handshake, label: "Referrers" },
+  { id: "tasks", icon: CheckSquare, label: "Task List" },
   { id: "chatbot", icon: Bot, label: "AI Assistant" },
 ];
 
@@ -69,7 +71,7 @@ export default function AppSidebar({ collapsed, onToggle, currentPage, onNavigat
       <nav className="mt-3 flex-1 space-y-0.5 px-2">
         {navItems.map(({ id, icon: Icon, label }) => {
           const active = currentPage === id;
-          const showBadge = id === "dashboard" && taskCount > 0;
+          const showBadge = id === "tasks" && taskCount > 0;
           return (
             <button
               key={id}

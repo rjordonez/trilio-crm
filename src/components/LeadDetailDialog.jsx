@@ -79,6 +79,45 @@ function EditableScoreBadge({ score, onChange }) {
   );
 }
 
+const careLevelOptions = ["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"];
+
+function EditableCareLevelBadge({ careLevel, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <Badge
+        variant="outline"
+        className={`cursor-pointer ${careLevelColors[careLevel] || ""}`}
+        onClick={() => setOpen(!open)}
+      >
+        {careLevel || "—"}
+        <ChevronDown className="h-2.5 w-2.5 ml-1" />
+      </Badge>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 rounded-md border border-border bg-popover shadow-lg py-1 min-w-[150px]">
+          {careLevelOptions.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors ${careLevel === opt ? "font-semibold text-primary" : "text-foreground"}`}
+            >{opt}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // stageLabel is now passed via props through the stages prop
 
 const interactionIcons = {
@@ -434,6 +473,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
   const [dbInteractions, setDbInteractions] = useState([]);
   const [localScore, setLocalScore] = useState(null);
   const [localStage, setLocalStage] = useState(null);
+  const [localCareLevel, setLocalCareLevel] = useState(null);
 
   // Fetch saved activity logs from DB when lead changes
   useEffect(() => {
@@ -489,6 +529,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
       setAiLoading(false);
       setLocalScore(null);
       setLocalStage(null);
+      setLocalCareLevel(null);
     }
     onOpenChange(openState);
   };
@@ -571,7 +612,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <EditableScoreBadge score={currentScore} onChange={(s) => { setLocalScore(s); if (lead) lead.score = s; }} />
-            <Badge variant="outline" className={careLevelColors[lead.careLevel]}>{lead.careLevel}</Badge>
+            <EditableCareLevelBadge careLevel={localCareLevel || lead.careLevel} onChange={(v) => { setLocalCareLevel(v); if (lead) lead.careLevel = v; }} />
             <EditableStageBadge
               stage={localStage || lead.stage}
               allStages={allStages}

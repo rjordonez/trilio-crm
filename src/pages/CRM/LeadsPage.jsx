@@ -348,6 +348,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
   const { navigate } = useNavigation();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
+  const autoRejectEmailEnabled = orgId ? (localStorage.getItem(`auto_reject_email_${orgId}`) ?? "true") === "true" : true;
   /* COMMENTED OUT - useColumnConfig hook
   const { allColumns, visibleColumns, visibleIds, toggleColumn, resetToDefaults } = useColumnConfig(
     orgSettings?.column_config || null,
@@ -501,8 +502,8 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         date: dateStr,
       }, orgId).catch((err) => console.error("Failed to save activity log:", err));
 
-      // Prompt user to send rejection email
-      if (rejectedLead?.contactEmail) {
+      // Prompt user to send rejection email (if enabled in settings)
+      if (autoRejectEmailEnabled && rejectedLead?.contactEmail) {
         if (gmailConnected) {
           setPendingRejectionEmail({ lead: rejectedLead, leadId, dateStr });
         } else {
@@ -528,7 +529,7 @@ export default function LeadsPage({ leads, setLeads, onAddLead, autoOpenLeadId, 
         }
       }
     }
-  }, [setLeads, userName, gmailConnected, orgId, executeRules, leads, onAddTask]);
+  }, [setLeads, userName, gmailConnected, orgId, executeRules, leads, onAddTask, autoRejectEmailEnabled, stageLabel]);
 
   // Pending rejection email approval with preview
   const [pendingRejectionEmail, setPendingRejectionEmail] = useState(null);

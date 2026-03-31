@@ -13,10 +13,11 @@ import ChatbotPage from "@/pages/CRM/ChatbotPage";
 import ReferrersPage from "@/pages/CRM/ReferrersPage";
 import IntegrationsPage from "@/pages/CRM/IntegrationsPage";
 import SettingsPage from "@/pages/CRM/SettingsPage";
+import TasksPage from "@/pages/CRM/TasksPage";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Users, Handshake, LayoutGrid, Bot } from "lucide-react";
+import { Users, Handshake, LayoutGrid, Bot, CheckSquare } from "lucide-react";
 import { fetchLeads, createLead, updateLead } from "@/services/supabaseLeads";
 import { fetchReferrers, updateReferrer } from "@/services/supabaseReferrers";
 import { fetchTasks, createTask, updateTask, deleteTask } from "@/services/supabaseTasks";
@@ -208,6 +209,8 @@ function CRMView() {
         );
       case 'referrers':
         return <ReferrersPage leads={leads} setLeads={setLeads} referrers={referrers} setReferrers={setReferrers} alerts={alerts} stages={stages} />;
+      case 'tasks':
+        return <TasksPage leads={leads} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} alerts={alerts} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
       case 'tours':
         return <ToursPage alerts={alerts} />;
       case 'follow-up':
@@ -254,7 +257,7 @@ function CRMView() {
                 {[
                   { key: "leads", label: "Leads", icon: Users },
                   { key: "referrers", label: "Referrers", icon: Handshake },
-                  { key: "chatbot", label: "AI", icon: Bot },
+                  { key: "tasks", label: "Tasks", icon: CheckSquare },
                   { key: "dashboard", label: "Dashboard", icon: LayoutGrid },
                 ].map(({ key, label, icon: Icon }) => (
                   <button

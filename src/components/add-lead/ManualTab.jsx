@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { createReferrer } from "@/services/supabaseReferrers";
 import { toast } from "@/hooks/use-toast";
@@ -33,7 +32,7 @@ const initialForm = {
   contactEmail: "",
   zipcode: "",
   relationship: "",
-  careType: [],
+  careType: "",
   hoursPerDay: "",
   timeline: "",
   budget: "",
@@ -151,7 +150,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       contactRelation: form.relationship || "",
       contactPhone: form.contactPhone || "",
       contactEmail: form.contactEmail || "",
-      careLevel: form.careType.length > 0 ? form.careType.join(", ") : "",
+      careLevel: form.careType || "",
       hoursPerDay: form.hoursPerDay || "",
       lastContactDate: dateStr,
       facility: "",
@@ -175,6 +174,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         salesRep: userName,
         situationSummary: form.notes ? [form.notes] : [],
         careNeeds: form.careType ? [`${form.careType} care needed`] : [],
+
         budgetFinancial: form.budget ? [form.budget] : [],
         decisionMakers: form.contactPerson || form.name ? [form.contactPerson || form.name] : [],
         timeline: form.timeline || "",
@@ -201,7 +201,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Date of Birth</Label>
-          <Input type="date" className="h-9 text-sm" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} />
+          <Input className="h-9 text-sm" placeholder="e.g. 01/15/1945" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} />
         </div>
       </div>
 
@@ -250,66 +250,31 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         </div>
       </div>
 
-      {/* Type of Care (checkboxes) */}
+      {/* Type of Care */}
       <div className="space-y-1.5">
         <Label className="text-xs">Type of Care</Label>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {["Assisted Living", "Independent Living", "Memory Care", "Skilled Nursing"].map((type) => (
-            <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox
-                checked={form.careType.includes(type)}
-                onCheckedChange={(checked) => {
-                  set("careType", checked
-                    ? [...form.careType, type]
-                    : form.careType.filter((t) => t !== type)
-                  );
-                }}
-              />
-              {type}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Hours of Care / Week */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Hours of Care / Week</Label>
-          <Input className="h-9 text-sm" placeholder="e.g. 20 hours" value={form.hoursPerDay} onChange={(e) => set("hoursPerDay", e.target.value)} />
-        </div>
+        <Select value={form.careType} onValueChange={(v) => set("careType", v)}>
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Select type of care" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Assisted Living">Assisted Living</SelectItem>
+            <SelectItem value="Independent Living">Independent Living</SelectItem>
+            <SelectItem value="Memory Care">Memory Care</SelectItem>
+            <SelectItem value="Skilled Nursing">Skilled Nursing</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Row 5: Timeline, Budget */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Timeline</Label>
-          <Select value={form.timeline} onValueChange={(v) => set("timeline", v)}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select timeline" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Immediately">Immediately</SelectItem>
-              <SelectItem value="Within a few days">Within a few days</SelectItem>
-              <SelectItem value="Within a week">Within a week</SelectItem>
-              <SelectItem value="Within a month">Within a month</SelectItem>
-              <SelectItem value="More than a month">More than a month</SelectItem>
-              <SelectItem value="Just researching">Just researching</SelectItem>
-            </SelectContent>
-          </Select>
+          <Input className="h-9 text-sm" placeholder="e.g. Immediately, Within a week" value={form.timeline} onChange={(e) => set("timeline", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Budget Expectation</Label>
-          <Select value={form.budget} onValueChange={(v) => set("budget", v)}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select budget" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="$40–50/hr">$40–50/hr</SelectItem>
-              <SelectItem value="$50–60/hr">$50–60/hr</SelectItem>
-              <SelectItem value="$60+/hr">$60+/hr</SelectItem>
-              <SelectItem value="Not sure">Not sure</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label className="text-xs">Budget</Label>
+          <Input className="h-9 text-sm" placeholder="e.g. $50/hr" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
         </div>
       </div>
 

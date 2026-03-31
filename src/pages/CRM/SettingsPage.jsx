@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Copy, Check, UserX, UserCheck, XCircle, LogOut, Crown, Shield, User, Mail, Pencil, Save, Plus, Trash2, RotateCcw, GripVertical, Lock, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -132,10 +133,16 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
 
   // Rejection email template (persisted in localStorage per org)
   const storageKey = organization?.id ? `rejection_template_${organization.id}` : null;
+  const autoRejectKey = organization?.id ? `auto_reject_email_${organization.id}` : null;
   const defaultRejection = defaultTemplates.find((t) => t.id === "t6");
   const [editingTemplate, setEditingTemplate] = useState(false);
   const [templateSubject, setTemplateSubject] = useState("");
   const [templateBody, setTemplateBody] = useState("");
+  const [autoRejectEnabled, setAutoRejectEnabled] = useState(() => {
+    if (!organization?.id) return true;
+    const saved = localStorage.getItem(`auto_reject_email_${organization.id}`);
+    return saved === null ? true : saved === "true";
+  });
 
   useEffect(() => {
     if (!storageKey) return;
@@ -159,6 +166,14 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
     localStorage.setItem(storageKey, JSON.stringify({ subject: templateSubject, body: templateBody }));
     setEditingTemplate(false);
     toast({ title: "Template saved", description: "Rejection email template updated" });
+  };
+
+  const handleToggleAutoReject = (checked) => {
+    setAutoRejectEnabled(checked);
+    if (autoRejectKey) {
+      localStorage.setItem(autoRejectKey, String(checked));
+    }
+    toast({ title: checked ? "Auto reject email enabled" : "Auto reject email disabled", description: checked ? "A rejection email prompt will appear when rejecting leads." : "No email prompt will appear when rejecting leads." });
   };
 
   const handleResetTemplate = () => {
@@ -660,25 +675,38 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Rejection Email Template</h3>
+                <h3 className="text-sm font-semibold text-foreground">Rejection Email</h3>
               </div>
-              {!editingTemplate ? (
-                <Button variant="outline" size="sm" onClick={() => setEditingTemplate(true)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveTemplate}>
-                    <Save className="h-3.5 w-3.5 mr-1" /> Save
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditingTemplate(false)}>Cancel</Button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="auto-reject-toggle" className="text-xs text-muted-foreground cursor-pointer">
+                    {autoRejectEnabled ? "Enabled" : "Disabled"}
+                  </label>
+                  <Switch id="auto-reject-toggle" checked={autoRejectEnabled} onCheckedChange={handleToggleAutoReject} />
                 </div>
-              )}
+                {autoRejectEnabled && (
+                  !editingTemplate ? (
+                    <Button variant="outline" size="sm" onClick={() => setEditingTemplate(true)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleSaveTemplate}>
+                        <Save className="h-3.5 w-3.5 mr-1" /> Save
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditingTemplate(false)}>Cancel</Button>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              This email is sent when you reject a lead. Available tags: <code className="bg-muted px-1 rounded">{"{{name}}"}</code> <code className="bg-muted px-1 rounded">{"{{contact_person}}"}</code> <code className="bg-muted px-1 rounded">{"{{care_level}}"}</code> <code className="bg-muted px-1 rounded">{"{{sender_name}}"}</code>
+              {autoRejectEnabled
+                ? <>When enabled, you{"'"}ll be prompted to send a rejection email when rejecting a lead. Available tags: <code className="bg-muted px-1 rounded">{"{{name}}"}</code> <code className="bg-muted px-1 rounded">{"{{contact_person}}"}</code> <code className="bg-muted px-1 rounded">{"{{care_level}}"}</code> <code className="bg-muted px-1 rounded">{"{{sender_name}}"}</code></>
+                : "When disabled, no rejection email prompt will appear when rejecting leads."
+              }
             </p>
-            {editingTemplate ? (
+            {autoRejectEnabled && (editingTemplate ? (
               <div className="space-y-2">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
@@ -697,7 +725,7 @@ export default function SettingsPage({ alerts = [], customFields = [], onAddFiel
                 <p className="text-xs font-medium text-foreground">Subject: {templateSubject}</p>
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">{templateBody}</p>
               </div>
-            )}
+            ))}
           </div>
 
           {/* COMMENTED OUT - Custom Fields section

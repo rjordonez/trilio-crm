@@ -288,7 +288,7 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
     ? referrers.find((r) => r.id === lead.referrerId)
     : null;
 
-  const isReferral = (n.leadSource || lead.source || "").toLowerCase().includes("referral") || fields.leadSource === "Referral";
+  const isReferralSource = (n.leadSource || lead.source || "").toLowerCase().includes("referral");
 
   // Inline add partner state
   const [addingPartner, setAddingPartner] = useState(false);
@@ -483,7 +483,7 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
     { value: "Event", label: "Event" },
   ];
 
-  const showReferral = isReferral;
+  const showReferral = isReferralSource || fields.leadSource === "Referral";
 
   // Build dropdown options from referrers
   const partnerOptions = useMemo(() => {
@@ -608,17 +608,6 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
             </div>
           </div>
         )}
-      </div>
-
-      <Separator />
-
-      {/* ── Care Needs ── */}
-      <div>
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Care Needs</h4>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
-          <InlineField label="Type of care" value={fields.careType} onSave={(v) => update("careType", v)} />
-          <InlineField label="Hours of care/day" value={fields.hoursPerDay} onSave={(v) => update("hoursPerDay", v)} />
-        </div>
       </div>
 
       <Separator />
