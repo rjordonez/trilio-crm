@@ -292,7 +292,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Budget</Label>
-          <Input className="h-9 text-sm" placeholder="e.g. $50/hr" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
+          <Input className="h-9 text-sm" placeholder="e.g. $5k–$10k" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
         </div>
       </div>
 

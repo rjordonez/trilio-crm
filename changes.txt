@@ -1,0 +1,25 @@
+Feedback Fixes (6 changes)                                                                                                    
+                                                                                                                                            
+  src/components/LeadDetailDialog.jsx                                                                                                       
+  1. Activity Log back arrow — Added "Back to Intake" button in Activity Log tab, converted tabs to controlled mode                         
+  2. Required due date on tasks — Add button disabled if title or due date is empty                                                         
+                                                                                                                                            
+  src/components/lead-detail/EditableIntakeContent.jsx                                                                                      
+  3. Sex/Gender field — Added "Sex" InlineSelect dropdown (Male/Female/Other) in the lead detail intake form                                
+  4. Relationship dropdown — Converted from free text to InlineSelect with expanded options: Self, Daughter, Son, Sister, Brother, Spouse,  
+  Relative, Hospital/Social Worker, Care Manager, Other                                                                                     
+                                                                                                                                            
+  src/components/add-lead/ManualTab.jsx                                                                                                     
+  5. Sex/Gender field — Added to the add-lead form                                                                                          
+  6. Relationship options — Updated to match (Daughter, Son, Sister, Brother, etc.)                                                         
+                                                                                                                                            
+  src/pages/CRM/Dashboard.jsx                                                                                                               
+  7. Added 2 new charts — "Lead Sources by Month" (stacked bar) and "Leads & Move-ins" (line chart)                                         
+  8. Removed Today's Tasks widget — and all task-related code/imports/props                                                                 
+                                                                                                                                            
+  src/pages/DemoPage/CRMView.jsx                                                                                                            
+  9. Cleaned up Dashboard props — removed task props from both <Dashboard> calls                                                            
+  10. Passed tasks/leads to ToursPage — for calendar integration                                                                            
+                                                                                                                                            
+  src/pages/CRM/ToursPage.jsx                                                                                                               
+  11. Tasks on calendar — Tasks appear as gold-colored events, with filter option and legend entry        
