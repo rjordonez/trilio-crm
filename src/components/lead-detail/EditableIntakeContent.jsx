@@ -264,6 +264,25 @@ function MustKnowCard({ value, onSave }) {
   );
 }
 
+const genderOptions = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Other", label: "Other" },
+];
+
+const relationshipOptions = [
+  { value: "Self", label: "Self" },
+  { value: "Daughter", label: "Daughter" },
+  { value: "Son", label: "Son" },
+  { value: "Sister", label: "Sister" },
+  { value: "Brother", label: "Brother" },
+  { value: "Spouse", label: "Spouse" },
+  { value: "Relative", label: "Relative" },
+  { value: "Hospital / Social Worker", label: "Hospital / Social Worker" },
+  { value: "Care Manager", label: "Care Manager" },
+  { value: "Other", label: "Other" },
+];
+
 const partnerTypes = [
   "Social Worker / Case Manager",
   "Hospital / Discharge Planner",
@@ -380,6 +399,7 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
   // State for all fields
   const buildFields = () => ({
     dateOfBirth: lead.dateOfBirth || "",
+    gender: lead.gender || "",
     zipcode: n.zipcode || "",
     contactPerson: lead.contactPerson || n.caller || "",
     relationship: lead.contactRelation || "",
@@ -416,6 +436,7 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
     // Persist back to lead object
     switch (key) {
       case "dateOfBirth": lead.dateOfBirth = val; break;
+      case "gender": lead.gender = val; break;
       case "zipcode": if (n) n.zipcode = val; break;
       case "contactPerson": lead.contactPerson = val; if (n) n.caller = val; break;
       case "relationship": lead.contactRelation = val; break;
@@ -522,9 +543,10 @@ export default function EditableIntakeContent({ lead, referrers = [], setLeads, 
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Information</h4>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
           <InlineField label="Date of Birth" value={fields.dateOfBirth} onSave={(v) => update("dateOfBirth", v)} />
+          <InlineSelect label="Sex" value={fields.gender} options={genderOptions} onSave={(v) => update("gender", v)} />
           <InlineField label="Zipcode" value={fields.zipcode} onSave={(v) => update("zipcode", v)} />
           <InlineField label="Contact Person" value={fields.contactPerson} onSave={(v) => update("contactPerson", v)} />
-          <InlineField label="Relationship" value={fields.relationship} onSave={(v) => update("relationship", v)} />
+          <InlineSelect label="Relationship" value={fields.relationship} options={relationshipOptions} onSave={(v) => update("relationship", v)} />
           <InlineField label="Email" value={fields.email} onSave={(v) => update("email", v)} />
           <InlineField label="Phone" value={fields.phone} onSave={(v) => update("phone", v)} />
           <InlineField label="Assign To" value={fields.assignTo} onSave={(v) => update("assignTo", v)} />

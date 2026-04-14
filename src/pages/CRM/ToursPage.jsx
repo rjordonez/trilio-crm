@@ -13,6 +13,8 @@ import {
 const hours = Array.from({ length: 10 }, (_, i) => i + 8);
 
 const communityEventColor = "hsl(160, 60%, 45%)";
+const taskColor = "hsl(38, 92%, 55%)";
+const callColor = "hsl(280, 60%, 55%)";
 
 function hslToComponents(hsl) {
   const match = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
@@ -21,8 +23,10 @@ function hslToComponents(hsl) {
 }
 
 function getEventStyle(event) {
-  const isCommunity = event.type === "community";
-  const color = isCommunity ? communityEventColor : event.salespersonColor;
+  let color;
+  if (event.type === "community") color = communityEventColor;
+  else if (event.type === "task") color = taskColor;
+  else color = event.salespersonColor;
   const { h, s, l } = hslToComponents(color);
   return {
     backgroundColor: `hsl(${h}, ${s}%, ${Math.min(l + 38, 95)}%)`,
@@ -67,7 +71,7 @@ function formatHour(h) {
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-export default function ToursPage({ alerts = [] }) {
+export default function ToursPage({ alerts = [], tasks = [], leads = [] }) {
   const [view, setView] = useState("week");
   const [baseDate, setBaseDate] = useState(new Date(2026, 1, 11));
   const [staffFilter, setStaffFilter] = useState("all");
@@ -80,13 +84,42 @@ export default function ToursPage({ alerts = [] }) {
     setBaseDate(d);
   };
 
+  // Build a lead lookup for task names
+  const leadsById = useMemo(() => {
+    const map = {};
+    leads.forEach((l) => { map[l.id] = l; });
+    return map;
+  }, [leads]);
+
+  // Convert tasks to calendar events
+  const taskEvents = useMemo(() => {
+    return tasks
+      .filter((t) => t.status === "pending" && t.due_date)
+      .map((t) => {
+        const lead = leadsById[t.lead_id];
+        return {
+          id: `task-${t.id}`,
+          date: t.due_date,
+          startHour: 9,
+          leadName: t.title,
+          facility: lead ? lead.name : "General task",
+          salesperson: "",
+          salespersonColor: taskColor,
+          type: "task",
+        };
+      });
+  }, [tasks, leadsById]);
+
+  // Merge all events
+  const allEvents = useMemo(() => [...mockCalendarTours, ...taskEvents], [taskEvents]);
+
   const filteredTours = useMemo(() => {
-    return mockCalendarTours.filter((t) => {
+    return allEvents.filter((t) => {
       if (staffFilter !== "all" && t.salesperson !== staffFilter) return false;
       if (typeFilter !== "all" && t.type !== typeFilter) return false;
       return true;
     });
-  }, [staffFilter, typeFilter]);
+  }, [allEvents, staffFilter, typeFilter]);
 
   const weekDates = useMemo(() => getWeekDates(baseDate), [baseDate]);
   const monthDates = useMemo(() => getMonthDates(baseDate), [baseDate]);
@@ -121,6 +154,7 @@ export default function ToursPage({ alerts = [] }) {
             <SelectItem value="all">All Events</SelectItem>
             <SelectItem value="tour">Tours</SelectItem>
             <SelectItem value="community">Community Events</SelectItem>
+            <SelectItem value="task">Tasks</SelectItem>
           </SelectContent>
         </Select>
 
@@ -175,6 +209,10 @@ export default function ToursPage({ alerts = [] }) {
         <div className="border-l border-border pl-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: communityEventColor }} />
           Community Event
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: taskColor }} />
+          Task
         </div>
       </div>
 

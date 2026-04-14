@@ -27,6 +27,7 @@ const partnerTypes = [
 const initialForm = {
   name: "",
   dateOfBirth: "",
+  gender: "",
   contactPerson: "",
   contactPhone: "",
   contactEmail: "",
@@ -146,6 +147,7 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
       id: `manual-lead-${Date.now()}`,
       name: form.name || "Unknown",
       dateOfBirth: form.dateOfBirth || "",
+      gender: form.gender || "",
       contactPerson: form.contactPerson || form.name || "Unknown",
       contactRelation: form.relationship || "",
       contactPhone: form.contactPhone || "",
@@ -193,8 +195,8 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <fieldset disabled={isProcessing} className={`space-y-4 ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}>
-      {/* Row 1: Client Name, Date of Birth */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Row 1: Client Name, Date of Birth, Sex */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Client Name</Label>
           <Input className="h-9 text-sm" value={form.name} onChange={(e) => set("name", e.target.value)} />
@@ -202,6 +204,19 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
         <div className="space-y-1.5">
           <Label className="text-xs">Date of Birth</Label>
           <Input className="h-9 text-sm" placeholder="e.g. 01/15/1945" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Sex</Label>
+          <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select sex" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Male">Male</SelectItem>
+              <SelectItem value="Female">Female</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -219,7 +234,10 @@ export default function ManualTab({ onLeadCreated, referrers = [], onReferrerAdd
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Self">Self</SelectItem>
-              <SelectItem value="Daughter / Son">Daughter / Son</SelectItem>
+              <SelectItem value="Daughter">Daughter</SelectItem>
+              <SelectItem value="Son">Son</SelectItem>
+              <SelectItem value="Sister">Sister</SelectItem>
+              <SelectItem value="Brother">Brother</SelectItem>
               <SelectItem value="Spouse">Spouse</SelectItem>
               <SelectItem value="Relative">Relative</SelectItem>
               <SelectItem value="Hospital / Social Worker">Hospital / Social Worker</SelectItem>

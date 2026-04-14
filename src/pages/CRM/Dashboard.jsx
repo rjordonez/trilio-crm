@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import TopBar from "@/components/TopBar";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from "recharts";
 import { Users, Plus, Trash2, CheckSquare, Calendar, Home, TrendingUp, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,6 +122,57 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
       .filter((s) => s.count > 0);
   }, [leads]);
 
+  // Lead sources by month
+  const sourcesByMonth = useMemo(() => {
+    const months = {};
+    leads.forEach((l) => {
+      const date = l.inquiryDate || l.initialContact;
+      if (!date) return;
+      const monthKey = date.slice(0, 7); // "YYYY-MM"
+      const src = l.source || l.intakeNote?.leadSource || "Other";
+      if (!months[monthKey]) months[monthKey] = {};
+      months[monthKey][src] = (months[monthKey][src] || 0) + 1;
+    });
+    const allSources = [...new Set(leads.map((l) => l.source || l.intakeNote?.leadSource || "Other"))];
+    return Object.entries(months)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([month, counts]) => {
+        const d = new Date(month + "-01");
+        const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+        const entry = { month: label };
+        allSources.forEach((s) => { entry[s] = counts[s] || 0; });
+        return entry;
+      });
+  }, [leads]);
+
+  const allSourceNames = useMemo(() => [...new Set(leads.map((l) => l.source || l.intakeNote?.leadSource || "Other"))], [leads]);
+
+  // Successful leads (move-ins) over time
+  const moveInsByMonth = useMemo(() => {
+    const months = {};
+    const moveInStages = new Set(["closed", "move_in"]);
+    leads.forEach((l) => {
+      const date = l.inquiryDate || l.initialContact;
+      if (!date) return;
+      const monthKey = date.slice(0, 7);
+      if (!months[monthKey]) months[monthKey] = { total: 0, moveIns: 0 };
+      months[monthKey].total += 1;
+      if (moveInStages.has(l.stage)) months[monthKey].moveIns += 1;
+    });
+    return Object.entries(months)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([month, data]) => {
+        const d = new Date(month + "-01");
+        return {
+          month: d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+          "Total Leads": data.total,
+          "Move-ins": data.moveIns,
+        };
+      });
+  }, [leads]);
+
   const today = getToday();
   const endOfWeek = getEndOfWeek();
 
@@ -179,136 +230,6 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
     <div className="flex flex-col h-full">
       <TopBar title="Dashboard" subtitle="At a glance overview" alerts={alerts} />
       <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* Today's Tasks Widget */}
-        <div className="rounded-lg border border-border bg-card p-5 shadow-crm-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <CheckSquare className="h-4 w-4 text-primary" />
-              <h3 className="font-display text-sm font-semibold text-foreground">Today's Tasks</h3>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setShowAddForm(!showAddForm)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Task
-            </Button>
-          </div>
-
-          <div className="flex gap-1 mb-3">
-            {filterTabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setTaskFilter(tab.key)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  taskFilter === tab.key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                } ${tab.key === "overdue" && tab.count > 0 ? (taskFilter === "overdue" ? "" : "text-destructive") : ""}`}
-              >
-                {tab.label} {tab.count > 0 && `(${tab.count})`}
-              </button>
-            ))}
-          </div>
-
-          {showAddForm && (
-            <form onSubmit={handleSubmitTask} className="mb-3 p-3 rounded-md border border-dashed border-border bg-muted/30 space-y-2">
-              <Input
-                placeholder="Task title..."
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="h-8 text-xs"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <select
-                  value={newLeadId}
-                  onChange={(e) => setNewLeadId(e.target.value)}
-                  className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs"
-                >
-                  <option value="">No lead (general task)</option>
-                  {leads.filter((l) => l.stage !== "rejected").map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-                <input
-                  type="date"
-                  value={newDueDate}
-                  onChange={(e) => setNewDueDate(e.target.value)}
-                  className="h-8 rounded-md border border-border bg-background px-2 text-xs"
-                />
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                  className="h-8 rounded-md border border-border bg-background px-2 text-xs w-24"
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" disabled={!newTitle.trim()}>Add</Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
-              </div>
-            </form>
-          )}
-
-          {filteredTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              {taskFilter === "today" ? "No tasks for today" : taskFilter === "overdue" ? "No overdue tasks" : "No tasks"}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {filteredTasks.map((task) => {
-                const lead = leadsById[task.lead_id];
-                const isOverdue = task.due_date < today;
-                return (
-                  <div key={task.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors group">
-                    <button
-                      onClick={() => handleToggleTask(task)}
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border hover:border-primary transition-colors"
-                    >
-                      {task.status === "done" && <span className="text-primary text-xs">✓</span>}
-                    </button>
-                    <span className="text-sm text-foreground flex-1 truncate">{task.title}</span>
-                    {lead && (
-                      <button
-                        onClick={() => handleLeadClick(task.lead_id)}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors truncate max-w-[120px]"
-                      >
-                        {lead.name}
-                      </button>
-                    )}
-                    <span className={`text-xs whitespace-nowrap ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                      {formatTaskDate(task.due_date)}
-                    </span>
-                    <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[task.priority] || priorityDot.normal}`} />
-                    <button
-                      onClick={() => onDeleteTask?.(task.id)}
-                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
-                    >
-                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {doneTasks.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">Recently Completed</p>
-              {doneTasks.map((task) => {
-                const lead = leadsById[task.lead_id];
-                return (
-                  <div key={task.id} className="flex items-center gap-2 py-1 px-2 opacity-50">
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-primary bg-primary/10 text-primary text-xs">✓</span>
-                    <span className="text-sm text-foreground flex-1 truncate line-through">{task.title}</span>
-                    {lead && <span className="text-xs text-muted-foreground truncate max-w-[120px]">{lead.name}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         {/* Date Filter */}
         <div className="flex justify-end">
           <select
@@ -456,6 +377,70 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
                 <p className="text-sm text-muted-foreground text-center py-8">No leads yet</p>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* New Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Lead Sources by Month */}
+          <div className="rounded-lg border border-border bg-card p-6 shadow-crm-sm">
+            <h3 className="font-display text-sm font-semibold text-foreground mb-1">Lead Sources by Month</h3>
+            <p className="text-xs text-muted-foreground mb-4">Last 6 months breakdown</p>
+            {sourcesByMonth.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sourcesByMonth}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "1px solid hsl(var(--border))",
+                        background: "hsl(var(--card))",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "11px" }} />
+                    {allSourceNames.map((name, i) => (
+                      <Bar key={name} dataKey={name} stackId="sources" fill={neutralPalette[i % neutralPalette.length]} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+            )}
+          </div>
+
+          {/* Successful Leads Over Time */}
+          <div className="rounded-lg border border-border bg-card p-6 shadow-crm-sm">
+            <h3 className="font-display text-sm font-semibold text-foreground mb-1">Leads & Move-ins</h3>
+            <p className="text-xs text-muted-foreground mb-4">Tracking successful conversions over time</p>
+            {moveInsByMonth.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={moveInsByMonth}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "1px solid hsl(var(--border))",
+                        background: "hsl(var(--card))",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "11px" }} />
+                    <Line type="monotone" dataKey="Total Leads" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="Move-ins" stroke="hsl(160, 60%, 45%)" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+            )}
           </div>
         </div>
       </div>

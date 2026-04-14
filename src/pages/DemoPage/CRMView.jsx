@@ -212,7 +212,7 @@ function CRMView() {
       case 'tasks':
         return <TasksPage leads={leads} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} alerts={alerts} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} />;
       case 'tours':
-        return <ToursPage alerts={alerts} />;
+        return <ToursPage alerts={alerts} tasks={tasks} leads={leads} />;
       case 'follow-up':
         return <FollowUpPage alerts={alerts} />;
       case 'chatbot':

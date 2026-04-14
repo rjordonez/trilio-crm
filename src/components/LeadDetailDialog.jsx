@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check } from "lucide-react";
+import { Phone, Mail, User, Sparkles, Loader2, Eye, MessageSquare, ArrowRightLeft, Users, Plus, ChevronDown, X, Clock, Trash2, Check, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -293,7 +293,7 @@ function TasksTabContent({ lead, tasks = [], onAddTask, onUpdateTask, onDeleteTa
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !dueDate) return;
     await onAddTask?.({ leadId: lead.id, title: title.trim(), dueDate, priority });
     setTitle("");
     setDueDate(new Date().toISOString().split("T")[0]);
@@ -311,9 +311,11 @@ function TasksTabContent({ lead, tasks = [], onAddTask, onUpdateTask, onDeleteTa
 
       {showForm && (
         <form onSubmit={handleSubmit} className="p-3 rounded-md border border-dashed border-border bg-muted/30 space-y-2">
-          <Input placeholder="Task title..." value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 text-xs" autoFocus />
+          <div>
+            <Input placeholder="Task title *" value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 text-xs" autoFocus />
+          </div>
           <div className="flex gap-2">
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs" />
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs" required />
             <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs w-24">
               <option value="low">Low</option>
               <option value="normal">Normal</option>
@@ -321,7 +323,7 @@ function TasksTabContent({ lead, tasks = [], onAddTask, onUpdateTask, onDeleteTa
             </select>
           </div>
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={!title.trim()}>Add</Button>
+            <Button type="submit" size="sm" disabled={!title.trim() || !dueDate}>Add</Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
           </div>
         </form>
@@ -467,6 +469,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
   const { user, organization } = useAuth();
   const userName = user?.user_metadata?.full_name || user?.email || "System";
   const orgId = organization?.id;
+  const [activeTab, setActiveTab] = useState("intake");
   const [aiSummary, setAiSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [localInteractions, setLocalInteractions] = useState([]);
@@ -530,6 +533,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
       setLocalScore(null);
       setLocalStage(null);
       setLocalCareLevel(null);
+      setActiveTab("intake");
     }
     onOpenChange(openState);
   };
@@ -671,7 +675,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
           </div>
         )}
 
-        <Tabs defaultValue="intake" className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={isMobile ? "mt-1 flex flex-col flex-1 min-h-0" : "mt-2"}>
           <TabsList className="w-full grid grid-cols-3 shrink-0">
             <TabsTrigger value="intake">☎️ Intake</TabsTrigger>
             <TabsTrigger value="timeline">📋 Activity Log</TabsTrigger>
@@ -682,6 +686,9 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onCall, onE
             <EditableIntakeContent lead={lead} referrers={referrers} setLeads={setLeads} setReferrers={setReferrers} onSaveStatusChange={setSaveStatus} customFields={customFields} />
           </TabsContent>
           <TabsContent value="timeline" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
+            <button onClick={() => setActiveTab("intake")} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-2 transition-colors">
+              <ArrowLeft className="h-3 w-3" /> Back to Intake
+            </button>
             <TimelineContent interactions={interactions} onAddNote={handleAddNote} onUpdateEntry={handleUpdateEntry} onDeleteEntry={handleDeleteEntry} />
           </TabsContent>
           <TabsContent value="tasks" className={isMobile ? "mt-2 flex-1 overflow-y-auto" : "mt-4"}>
