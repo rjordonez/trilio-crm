@@ -180,7 +180,7 @@ function CRMView() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} stages={stages} />;
+        return <Dashboard leads={leads} alerts={alerts} stages={stages} />;
       case 'leads':
         return (
           <LeadsPage
@@ -222,7 +222,7 @@ function CRMView() {
       case 'settings':
         return <SettingsPage alerts={alerts} customFields={customFields} onAddField={addField} onRemoveField={removeField} onUpdateField={updateCustomField} orgSettings={orgSettings} saveOrgSettings={saveOrgSettings} stages={stages} stageLabel={stageLabel} onAddStage={addStage} onRemoveStage={removeStage} onRenameStage={renameStage} onReorderStages={reorderStages} onResetStages={resetStagesToDefault} leads={leads} automationRules={automationRules} onAddRule={addRule} onRemoveRule={removeAutomationRule} onUpdateRule={updateAutomationRule} onToggleRule={toggleRule} onResetAutomation={resetAutomationDefaults} />;
       default:
-        return <Dashboard leads={leads} alerts={alerts} tasks={tasks} onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onNavigate={setCurrentPage} setAutoOpenLeadId={setAutoOpenLeadId} stages={stages} />;
+        return <Dashboard leads={leads} alerts={alerts} stages={stages} />;
     }
   };
 

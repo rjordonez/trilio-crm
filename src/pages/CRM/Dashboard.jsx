@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 import TopBar from "@/components/TopBar";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from "recharts";
-import { Users, Plus, Trash2, CheckSquare, Calendar, Home, TrendingUp, CalendarDays } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Users, Home, TrendingUp, CalendarDays } from "lucide-react";
 
 const neutralPalette = [
   "hsl(var(--primary))",
@@ -15,28 +13,7 @@ const neutralPalette = [
   "hsl(38, 92%, 55%)",
 ];
 
-// stageLabel and funnelOrder are now derived from the stages prop
-
-const priorityDot = { high: "bg-destructive", normal: "bg-warning", low: "bg-muted-foreground/40" };
-
-function formatTaskDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function getToday() {
-  return new Date().toISOString().split("T")[0];
-}
-
-function getEndOfWeek() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split("T")[0];
-}
-
-export default function Dashboard({ leads = [], alerts = [], stages = [], tasks = [], onAddTask, onUpdateTask, onDeleteTask, onNavigate, setAutoOpenLeadId }) {
+export default function Dashboard({ leads = [], alerts = [], stages = [] }) {
   const funnelOrder = useMemo(() => stages.map((s) => s.key), [stages]);
   const stageLabel = useMemo(() => {
     const map = {};
@@ -44,12 +21,6 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
     return map;
   }, [stages]);
   const [dateRange, setDateRange] = useState("this_month");
-  const [taskFilter, setTaskFilter] = useState("today");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newLeadId, setNewLeadId] = useState("");
-  const [newDueDate, setNewDueDate] = useState(getToday());
-  const [newPriority, setNewPriority] = useState("normal");
 
   const dateFilteredLeads = useMemo(() => {
     const now = new Date();
@@ -128,7 +99,7 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
     leads.forEach((l) => {
       const date = l.inquiryDate || l.initialContact;
       if (!date) return;
-      const monthKey = date.slice(0, 7); // "YYYY-MM"
+      const monthKey = date.slice(0, 7);
       const src = l.source || l.intakeNote?.leadSource || "Other";
       if (!months[monthKey]) months[monthKey] = {};
       months[monthKey][src] = (months[monthKey][src] || 0) + 1;
@@ -172,59 +143,6 @@ export default function Dashboard({ leads = [], alerts = [], stages = [], tasks 
         };
       });
   }, [leads]);
-
-  const today = getToday();
-  const endOfWeek = getEndOfWeek();
-
-  const leadsById = useMemo(() => {
-    const map = {};
-    leads.forEach((l) => { map[l.id] = l; });
-    return map;
-  }, [leads]);
-
-  const pendingTasks = useMemo(() => tasks.filter((t) => t.status === "pending"), [tasks]);
-  const doneTasks = useMemo(() => tasks.filter((t) => t.status === "done").slice(0, 5), [tasks]);
-
-  const overdueTasks = useMemo(() => pendingTasks.filter((t) => t.due_date < today), [pendingTasks, today]);
-  const todayTasks = useMemo(() => pendingTasks.filter((t) => t.due_date === today), [pendingTasks, today]);
-  const weekTasks = useMemo(() => pendingTasks.filter((t) => t.due_date >= today && t.due_date <= endOfWeek), [pendingTasks, today, endOfWeek]);
-
-  const filteredTasks = useMemo(() => {
-    switch (taskFilter) {
-      case "overdue": return overdueTasks;
-      case "today": return todayTasks;
-      case "week": return weekTasks;
-      case "all": return pendingTasks;
-      default: return todayTasks;
-    }
-  }, [taskFilter, overdueTasks, todayTasks, weekTasks, pendingTasks]);
-
-  const handleToggleTask = async (task) => {
-    await onUpdateTask?.(task.id, { status: task.status === "pending" ? "done" : "pending" });
-  };
-
-  const handleSubmitTask = async (e) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    await onAddTask?.({ leadId: newLeadId || null, title: newTitle.trim(), dueDate: newDueDate, priority: newPriority });
-    setNewTitle("");
-    setNewLeadId("");
-    setNewDueDate(getToday());
-    setNewPriority("normal");
-    setShowAddForm(false);
-  };
-
-  const handleLeadClick = (leadId) => {
-    setAutoOpenLeadId?.(leadId);
-    onNavigate?.("leads");
-  };
-
-  const filterTabs = [
-    { key: "overdue", label: "Overdue", count: overdueTasks.length },
-    { key: "today", label: "Today", count: todayTasks.length },
-    { key: "week", label: "This Week", count: weekTasks.length },
-    { key: "all", label: "All", count: pendingTasks.length },
-  ];
 
   return (
     <div className="flex flex-col h-full">
